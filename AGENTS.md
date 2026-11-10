@@ -272,6 +272,35 @@ Use this when the request is a web blog or a web report, not a talk. The procedu
 - The same controlled English as the presentation skill, including the approved-word substitutions. The unambiguous substitutions are in the language lint. "Since" versus "because", imperative steps, and double negatives are not, because a machine cannot tell them apart from ordinary prose.
 - A published page is one self-contained HTML file (theme, mathematics, diagrams). This repository does not ship that compiler. Follow the recipe in the skill when you build the page.
 
+## 5.5. Keep live-slide and video cues identical
+
+When a storyboard cue is meant to correspond to a live reveal, label the slide with `data-scene="SCENE_ID"` and the reveal element with `data-cue="CUE_ID"` in addition to the frontend engine's existing `class="st" data-st="N"`.
+
+Prefer semantic narration:
+
+```yaml
+steps:
+  - scene: wh
+    cue: incoming
+    text: "..."
+```
+
+The deck video pipeline resolves that semantic target to the actual numeric slide/step. If an author supplies both semantic and numeric targets, disagreement is an error. Validate parity with:
+
+```bash
+python3 -m slides.cues check PATH/scene.yaml PATH/deck.html
+```
+
+Before publishing or presenting a deck, capture all reveal states:
+
+```bash
+python3 -m video.qa PATH/deck --out build/deck-qa.html --strict
+```
+
+The browser readiness gate waits for fonts, decoded images, MathJax, and an optional `window.hepContentReady` promise. The contact sheet is still a human visual review surface; automatic overflow checks do not prove that the composition is good.
+
+Run `python3 -m checks.doctor` before a new machine is used for rendering. Use `--require` for the capability the task actually needs instead of requiring the entire stack.
+
 ## 6. Before you finish
 
 From the repository root, language first, then the checks on those same files:
