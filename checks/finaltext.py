@@ -166,9 +166,6 @@ def _provenance(root: Path, paths: list[Path]) -> list[str]:
 
 
 def _traceability(root: Path, paths: list[Path]) -> list[str]:
-    manifest = _manifest(root)
-    if manifest is None:
-        return [f"no sources.yaml in {root}; number trace was not given the final text"]
     inputs: list[tuple[Path, str]] = []
     for path in paths:
         kind = classify(path)
@@ -177,6 +174,9 @@ def _traceability(root: Path, paths: list[Path]) -> list[str]:
     if not inputs:
         # Scene claims/equations are checked by checks.diagrams instead.
         return []
+    manifest = _manifest(root)
+    if manifest is None:
+        return [f"no sources.yaml in {root}; number trace was not given the final text"]
     try:
         report = check_traceability(root, manifest, inputs=inputs)
     except ManifestError as exc:
