@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 from checks.claims import ClaimRegistry, ClaimRegistryError, load_registry
+from checks.storyboard import StoryboardError, narration_text
 from checks.citations import (
     CitationReport,
     Row,
@@ -81,7 +82,14 @@ def _check_scene(
     model,
     registry: ClaimRegistry | None,
 ) -> None:
-    narration = normalize_space(str(scene.get("narration") or ""))
+    raw_narration = scene.get("narration")
+    if raw_narration in (None, ""):
+        narration = ""
+    else:
+        try:
+            narration = narration_text(scene)
+        except StoryboardError as exc:
+            raise SceneError(str(exc)) from exc
     visual = scene.get("visual") or {}
     if not isinstance(visual, dict):
         raise SceneError(f"{scene_id}: visual must be a mapping")
