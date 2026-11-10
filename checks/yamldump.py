@@ -62,6 +62,8 @@ def _dump(value: Any, indent: int) -> list[str]:
 
 
 def _is_scalar(value: Any) -> bool:
+    if value in ([], (), {}):
+        return True
     return value is None or isinstance(
         value, (str, int, float, Decimal, bool)
     )
@@ -76,6 +78,10 @@ def _key(value: str) -> str:
 
 
 def _scalar(value: Any) -> str:
+    if value in ([], ()):
+        return "[]"
+    if value == {}:
+        return "{}"
     if value is None:
         return "null"
     if value is True:
