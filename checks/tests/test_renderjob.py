@@ -90,7 +90,7 @@ class RenderJobIntegrityTest(unittest.TestCase):
             root = Path(root_tmp)
             external = Path(ext_tmp)
             slide = _write(root / "deck.html", "<div class='slide'>Public deck.</div>\n")
-            _write(root / "sources.yaml", _deck_manifest())
+            _write(root / "sources.yaml", _deck_manifest(include_narration=False))
             narration = _write(external / "words.yaml", "The mass is 987654 GeV.\n")
             _write(
                 external / "sources.yaml",
