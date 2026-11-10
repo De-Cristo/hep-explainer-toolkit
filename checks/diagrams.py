@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 from checks.claims import ClaimRegistry, ClaimRegistryError, load_registry
-from checks.storyboard import StoryboardError, narration_text
+from checks.storyboard import StoryboardError, narration_segments, narration_text
 from checks.citations import (
     CitationReport,
     Row,
@@ -117,14 +117,29 @@ def _check_scene(
             if isinstance(item, dict) and str(item.get("kind") or "") == "claim"
         ]
         if narration not in claim_texts:
-            report.add(Row(
-                scene_id,
-                "narration",
-                "FAIL",
-                "narration has no claim whose text is the narration",
-                narration,
-                "",
-            ))
+            segment_texts = []
+            if isinstance(raw_narration, list):
+                try:
+                    segment_texts = [
+                        segment.text for segment in narration_segments(scene)
+                    ]
+                except StoryboardError as exc:
+                    raise SceneError(str(exc)) from exc
+            uncovered = [
+                text for text in segment_texts
+                if text not in claim_texts
+            ]
+            if not segment_texts or uncovered:
+                body = "\n".join(uncovered) if uncovered else narration
+                report.add(Row(
+                    scene_id,
+                    "narration",
+                    "FAIL",
+                    "narration is not covered by claim text; segmented narration "
+                    "may cite one claim per segment",
+                    body,
+                    "",
+                ))
 
     claim_ids: set[str] = set()
     equation_claims: dict[str, str] = {}
