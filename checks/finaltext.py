@@ -142,14 +142,27 @@ def _language(paths: list[Path]) -> list[str]:
 
 
 def _provenance(root: Path, paths: list[Path]) -> list[str]:
-    del paths
     report = scan_confidentiality(root)
-    if report.ok():
-        return []
-    return [
+    failures = [
         f"{item.rule_id} {item.path} {item.note or item.snippet}"
         for item in report.failures
     ]
+    root_resolved = root.resolve()
+    for path in paths:
+        resolved = path.resolve()
+        if resolved == root_resolved or root_resolved in resolved.parents:
+            continue
+        # External render inputs still need the confidentiality marker scan.
+        # Their provenance declaration belongs to their own project, so do
+        # not turn the lack of a local sources.yaml entry into a duplicate
+        # provenance failure here; exact number traceability runs separately.
+        external = scan_confidentiality(resolved)
+        failures.extend(
+            f"{item.rule_id} {item.path} {item.note or item.snippet}"
+            for item in external.failures
+            if item.channel != "provenance"
+        )
+    return failures
 
 
 def _traceability(root: Path, paths: list[Path]) -> list[str]:
