@@ -28,7 +28,7 @@ from checks.citations import (
 from checks.yamlsubset import YamlError, load as load_yaml
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
-_KINDS = {"claim", "number", "equation", "diagram"}
+_KINDS = {"claim", "number", "equation", "diagram", "definition"}
 _ORIGINS = {"theory", "measurement", "derived", "illustrative", "definition"}
 _REVIEW = {
     "source": {"declared", "pending"},
@@ -40,6 +40,15 @@ _REVIEW = {
 
 class ClaimRegistryError(ValueError):
     """A claim registry is malformed or internally inconsistent."""
+
+
+@dataclass(frozen=True)
+class Comparison:
+    id: str
+    left: str
+    right: str
+    same_when: tuple[str, ...]
+    differs_when: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -56,6 +65,8 @@ class Claim:
     context: dict[str, object]
     assumptions: tuple[str, ...]
     caveats: tuple[str, ...]
+    depends_on: tuple[str, ...]
+    assumption_tags: tuple[str, ...]
     review: dict[str, str]
 
     @property
@@ -72,6 +83,26 @@ class Claim:
 class ClaimRegistry:
     path: Path
     claims: dict[str, Claim]
+    comparisons: tuple[Comparison, ...] = ()
+
+    def effective_assumptions(self, claim_id: str) -> tuple[str, ...]:
+        """Return explicit and upstream assumptions without duplication."""
+        seen_claims: set[str] = set()
+        values: list[str] = []
+
+        def visit(current: str) -> None:
+            if current in seen_claims:
+                return
+            seen_claims.add(current)
+            claim = self.get(current)
+            for dep in claim.depends_on:
+                visit(dep)
+            for value in (*claim.assumption_tags, *claim.assumptions):
+                if value not in values:
+                    values.append(value)
+
+        visit(claim_id)
+        return tuple(values)
 
     def get(self, claim_id: str) -> Claim:
         try:
@@ -104,7 +135,16 @@ def load_registry(path: Path) -> ClaimRegistry:
         if claim.id in claims:
             raise ClaimRegistryError(f"{path}: duplicate claim id {claim.id}")
         claims[claim.id] = claim
-    return ClaimRegistry(path, claims)
+
+    raw_comparisons = data.get("comparisons") or []
+    if not isinstance(raw_comparisons, list):
+        raise ClaimRegistryError(f"{path}: comparisons must be a list")
+    comparisons = tuple(
+        _comparison(path, raw, index, claims)
+        for index, raw in enumerate(raw_comparisons, 1)
+    )
+    _validate_dependencies(path, claims)
+    return ClaimRegistry(path, claims, comparisons)
 
 
 def registry_dependencies(path: Path) -> tuple[Path, ...]:
@@ -141,6 +181,13 @@ def format_review(registry: ClaimRegistry) -> str:
             lines.append(f"- Context: {rendered}")
         if claim.assumptions:
             lines.append("- Assumptions: " + "; ".join(claim.assumptions))
+        if claim.depends_on:
+            lines.append("- Depends on: " + ", ".join(claim.depends_on))
+        if claim.assumption_tags:
+            lines.append("- Assumption tags: " + ", ".join(claim.assumption_tags))
+        effective = registry.effective_assumptions(claim.id)
+        if effective:
+            lines.append("- Effective assumptions: " + "; ".join(effective))
         if claim.caveats:
             lines.append("- Caveats: " + "; ".join(claim.caveats))
         lines.extend([
@@ -148,6 +195,18 @@ def format_review(registry: ClaimRegistry) -> str:
             f"Strict release ready: **{'yes' if claim.strict_ready else 'no'}**",
             "",
         ])
+    if registry.comparisons:
+        lines.extend(["# Definition comparisons", ""])
+        for comparison in registry.comparisons:
+            lines.extend([
+                f"## {comparison.id}",
+                "",
+                f"- Left: {comparison.left}",
+                f"- Right: {comparison.right}",
+                "- Same when supported by: " + ", ".join(comparison.same_when),
+                "- Differ when supported by: " + ", ".join(comparison.differs_when),
+                "",
+            ])
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -169,10 +228,23 @@ def report_to_json(registry: ClaimRegistry) -> dict[str, object]:
                 "context": claim.context,
                 "assumptions": list(claim.assumptions),
                 "caveats": list(claim.caveats),
+                "depends_on": list(claim.depends_on),
+                "assumption_tags": list(claim.assumption_tags),
+                "effective_assumptions": list(registry.effective_assumptions(claim.id)),
                 "review": claim.review,
                 "strict_ready": claim.strict_ready,
             }
             for claim in registry.claims.values()
+        ],
+        "comparisons": [
+            {
+                "id": item.id,
+                "left": item.left,
+                "right": item.right,
+                "same_when": list(item.same_when),
+                "differs_when": list(item.differs_when),
+            }
+            for item in registry.comparisons
         ],
     }
 
@@ -230,6 +302,10 @@ def _claim(registry_path: Path, raw: object, index: int) -> Claim:
         raise ClaimRegistryError(f"{registry_path}/{claim_id}: context must be a mapping")
     assumptions = _strings(raw.get("assumptions"), registry_path, claim_id, "assumptions")
     caveats = _strings(raw.get("caveats"), registry_path, claim_id, "caveats")
+    depends_on = _strings(raw.get("depends_on"), registry_path, claim_id, "depends_on")
+    assumption_tags = _strings(
+        raw.get("assumption_tags"), registry_path, claim_id, "assumption_tags"
+    )
     review = _review(raw.get("review"), registry_path, claim_id)
     if kind == "number" and review["value"] == "not_applicable":
         raise ClaimRegistryError(
@@ -249,8 +325,76 @@ def _claim(registry_path: Path, raw: object, index: int) -> Claim:
         context=dict(context),
         assumptions=assumptions,
         caveats=caveats,
+        depends_on=depends_on,
+        assumption_tags=assumption_tags,
         review=review,
     )
+
+
+def _comparison(
+    path: Path,
+    raw: object,
+    index: int,
+    claims: dict[str, Claim],
+) -> Comparison:
+    if not isinstance(raw, dict):
+        raise ClaimRegistryError(f"{path}: comparison {index} must be a mapping")
+    comparison_id = str(raw.get("id") or "").strip()
+    if not _ID.fullmatch(comparison_id):
+        raise ClaimRegistryError(
+            f"{path}: comparison {index} has invalid id {comparison_id!r}"
+        )
+    left = str(raw.get("left") or "").strip()
+    right = str(raw.get("right") or "").strip()
+    if left not in claims or right not in claims:
+        raise ClaimRegistryError(
+            f"{path}/{comparison_id}: left and right must reference registered claims"
+        )
+    same_when = _strings(raw.get("same_when"), path, comparison_id, "same_when")
+    differs_when = _strings(raw.get("differs_when"), path, comparison_id, "differs_when")
+    unknown = [
+        ref for ref in (*same_when, *differs_when)
+        if ref not in claims
+    ]
+    if unknown:
+        raise ClaimRegistryError(
+            f"{path}/{comparison_id}: unknown comparison support claim(s): "
+            + ", ".join(unknown)
+        )
+    if not same_when or not differs_when:
+        raise ClaimRegistryError(
+            f"{path}/{comparison_id}: comparisons need same_when and differs_when support"
+        )
+    return Comparison(comparison_id, left, right, same_when, differs_when)
+
+
+def _validate_dependencies(path: Path, claims: dict[str, Claim]) -> None:
+    for claim in claims.values():
+        unknown = [item for item in claim.depends_on if item not in claims]
+        if unknown:
+            raise ClaimRegistryError(
+                f"{path}/{claim.id}: unknown depends_on claim(s): "
+                + ", ".join(unknown)
+            )
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(claim_id: str) -> None:
+        if claim_id in visited:
+            return
+        if claim_id in visiting:
+            raise ClaimRegistryError(
+                f"{path}: dependency cycle contains {claim_id}"
+            )
+        visiting.add(claim_id)
+        for dep in claims[claim_id].depends_on:
+            visit(dep)
+        visiting.remove(claim_id)
+        visited.add(claim_id)
+
+    for claim_id in claims:
+        visit(claim_id)
 
 
 def _validate_citation(path: Path, claim_id: str, citation: dict) -> None:

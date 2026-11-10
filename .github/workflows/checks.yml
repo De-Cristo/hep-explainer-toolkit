@@ -16,6 +16,8 @@ jobs:
           python-version: "3.12"
       - name: Unit tests
         run: python -m unittest discover -s checks/tests -t . -v
+      - name: Definition and human-review module import
+        run: python -m checks.review --help
       - name: Reusable claim registry example
         run: python -m checks.claims check examples/theory/vh/claims.yaml
       - name: Audience-linked storyboard example
