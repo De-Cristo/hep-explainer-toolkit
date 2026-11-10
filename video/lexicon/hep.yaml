@@ -1,0 +1,69 @@
+# Spoken forms for HEP tokens that a generic English TTS voice misreads.
+# Patterns are Python regular expressions. The longest match at each character
+# wins, so "13.6 TeV" is consumed before the bare "TeV" rule.
+# Captions keep the narration file's spelling; only the TTS string changes.
+#
+# ignore_case is safe for these tokens: \b stops "WH" from matching inside
+# "what", and "ZH" still matches "ZH." at the word boundary.
+
+rules:
+  - pattern: '13\.6\s*TeV'
+    spoken: '13.6 teraelectronvolts'
+    ignore_case: true
+
+  - pattern: 'GeV/c'
+    spoken: 'gigaelectronvolts per c'
+    ignore_case: true
+
+  - pattern: '\bGeV\b'
+    spoken: 'gigaelectronvolts'
+    ignore_case: true
+
+  - pattern: '\bTeV\b'
+    spoken: 'teraelectronvolts'
+    ignore_case: true
+
+  - pattern: 'fb\s*\^\s*\{?\s*-1\s*\}?|fb\s*\{?\s*-1\s*\}?|fb⁻¹|fb−1'
+    spoken: 'inverse femtobarns'
+    ignore_case: true
+
+  - pattern: 'J/psi|J/ψ'
+    spoken: 'J psi'
+    ignore_case: true
+
+  - pattern: 'ttbar|t\\bar\{t\}|tt̄|t̄t'
+    spoken: 't t bar'
+    ignore_case: true
+
+  - pattern: 'H\s*(?:->|→)\s*bb'
+    spoken: 'H to b b'
+    ignore_case: true
+
+  - pattern: 'chi[-\s]?squared|χ²|χ\^2|chi\^2'
+    spoken: 'kye squared'
+    ignore_case: true
+
+  - pattern: 'p_\{\\mathrm\{T\}\}|p_\{T\}|p_T|\bpT\b'
+    spoken: 'p T'
+    ignore_case: true
+
+  - pattern: '\bZH\b'
+    spoken: 'Z H'
+    ignore_case: true
+
+  - pattern: '\bWH\b'
+    spoken: 'W H'
+    ignore_case: true
+
+  # The words "eta" and "phi", and the symbols η and φ, are already
+  # /ˈiːtə/ and /faɪ/ from espeak. Rewriting them to "ay-ta" or "fye"
+  # makes the vowel worse. Map only the symbols onto those words.
+  # χ² is the exception: the raw symbol comes out as "chai two".
+  - pattern: 'σ'
+    spoken: 'sigma'
+
+  - pattern: 'η'
+    spoken: 'eta'
+
+  - pattern: 'φ'
+    spoken: 'phi'

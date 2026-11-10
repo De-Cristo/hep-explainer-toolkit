@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A toy mass peak</title>
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (Theme: Classic Red-Yellow)
+           Academic Presentation — Fixed 1920x1080 Canvas
+           =========================================== */
+        :root {
+            --theme-bg: #fefefc;
+            --theme-primary: #cc0000;
+            --theme-accent: #ffff00;
+            --theme-highlight: #cc0000;
+            --theme-progress: #d4a800;
+            --theme-text: #1a1a1a;
+
+            --font-body: 'Times New Roman', Times, serif;
+            --font-comic: 'Comic Sans MS', 'Comic Sans', cursive;
+
+            --title-size: 64px;
+            --h1-size: 56px;
+            --body-size: 34px;
+
+            --footer-height: 48px;
+            --header-height: 60px;
+
+            --duration-normal: 0.5s;
+        }
+
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #1a1a1a;
+            color: var(--theme-text);
+            font-family: var(--font-body);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        #scale-wrapper {
+            position: absolute;
+            width: 1920px;
+            height: 1080px;
+            left: 50%;
+            top: 50%;
+            transform-origin: center center;
+            background: var(--theme-bg);
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .slides-scroller {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slides-scroller::-webkit-scrollbar {
+            display: none;
+        }
+
+        .slides-scroller {
+            scrollbar-width: none;
+        }
+
+        .global-logos {
+            position: absolute;
+            top: 12px;
+            right: 0;
+            height: calc(var(--header-height) - 4px);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            z-index: 1001;
+            background: transparent;
+        }
+
+        .logo-img {
+            height: 130%;
+            object-fit: contain;
+            margin-left: 5px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            background-color: white;
+        }
+
+        /* Logo border-radius is auto-detected at runtime by aspect ratio:
+           square-ish (0.8~1.2) → 4px, else → 50% (circular) */
+
+        .global-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: var(--header-height);
+            background: var(--theme-primary);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding-left: 30px;
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .global-header.hidden {
+            transform: translateY(-100%);
+        }
+
+        .header-text {
+            color: white;
+            font-size: 38px;
+            font-weight: bold;
+            font-family: var(--font-body);
+        }
+
+        .progress-container {
+            position: absolute;
+            bottom: var(--footer-height);
+            left: 0;
+            width: 1920px;
+            height: 4px;
+            z-index: 1001;
+            display: flex;
+            gap: 2px;
+        }
+
+        .progress-segment {
+            flex: 1;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.15);
+            transition: background 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .progress-segment.active {
+            background: var(--theme-progress);
+            box-shadow: 0 0 4px color-mix(in srgb, var(--theme-progress) 50%, transparent);
+        }
+
+        .global-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 1920px;
+            height: var(--footer-height);
+            background: var(--theme-primary);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            color: white;
+            font-weight: bold;
+            font-family: var(--font-body);
+            font-size: 24px;
+            box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .footer-left {
+            text-align: left;
+            flex: 2;
+        }
+
+        .footer-center {
+            text-align: center;
+            flex: 1;
+        }
+
+        .footer-right {
+            text-align: right;
+            flex: 2;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .slide {
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding-bottom: var(--footer-height);
+            background-color: var(--theme-bg);
+            background-image:
+                linear-gradient(rgba(139, 69, 19, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 69, 19, 0.035) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .slide.normal-slide {
+            padding-top: var(--header-height);
+        }
+
+        .title-slide {
+            justify-content: center;
+        }
+
+        .title-banner {
+            width: 1920px;
+            background: var(--theme-primary);
+            color: white;
+            text-align: center;
+            padding: 60px 20px;
+            margin-bottom: 40px;
+            margin-top: 80px;
+        }
+
+        .title-banner h1 {
+            font-family: var(--font-body);
+            font-size: var(--title-size);
+            margin: 0 0 20px 0;
+            font-weight: bold;
+        }
+
+        .title-banner h2 {
+            font-family: var(--font-body);
+            font-size: calc(var(--title-size) * 0.5);
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .highlight-accent {
+            color: var(--theme-highlight);
+        }
+
+        .title-banner .highlight-accent {
+            color: var(--theme-accent);
+        }
+
+        .global-footer .highlight-accent {
+            color: var(--theme-accent);
+        }
+
+        .author-info {
+            margin-top: 60px;
+            text-align: center;
+            font-size: var(--body-size);
+            line-height: 1.8;
+            color: var(--theme-text);
+        }
+
+        .author-info p {
+            margin: 10px 0;
+        }
+
+        .transition-slide {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .transition-slide::before {
+            content: '';
+            position: absolute;
+            left: 120px;
+            top: 80px;
+            bottom: 80px;
+            width: 6px;
+            background: linear-gradient(180deg, transparent 0%, var(--theme-primary) 15%, var(--theme-primary) 85%, transparent 100%);
+            border-radius: 3px;
+        }
+
+        .transition-text {
+            font-family: var(--font-comic);
+            font-size: 64px;
+            font-weight: bold;
+            color: var(--theme-text);
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 1920px;
+            padding-left: 180px;
+            padding-right: 180px;
+            line-height: 1.25;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .slide-content {
+            flex: 1;
+            width: 1760px;
+            margin: 0 auto;
+            padding: 20px 0;
+            overflow: visible;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bullet-list {
+            margin-left: 0;
+            font-size: var(--body-size);
+        }
+
+        .bullet-list li {
+            list-style-type: disc;
+            font-size: inherit;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        /* Dense mode: override default 30px with li style="margin-bottom: 10px;" for dense content */
+        .bullet-list li::marker {
+            color: var(--theme-primary);
+            font-size: 1.1em;
+        }
+
+        .bullet-list li ul li {
+            list-style-type: '— ';
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+
+        .bullet-list li ul li::marker {
+            color: var(--theme-primary);
+            font-size: 1em;
+        }
+
+        .dual-layout {
+            --split: 4fr 6fr;
+            display: grid;
+            grid-template-columns: var(--split);
+            gap: 40px;
+            height: 100%;
+        }
+
+        .left-col {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding-top: 20px;
+            padding-right: 40px;
+        }
+
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 20px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .image-box {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* Hyperlink underline: offset prevents clipping descenders (p, y, g) and commas */
+        a {
+            color: #0000ee;
+            text-decoration: underline;
+            text-decoration-skip-ink: none;
+            text-underline-offset: 7.5px;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            height: 100%;
+            align-items: start;
+        }
+
+        .highlight-box {
+            background: color-mix(in srgb, var(--theme-highlight) 8%, transparent);
+            backdrop-filter: blur(12px);
+            border: 1px solid color-mix(in srgb, var(--theme-highlight) 30%, transparent);
+            border-left: 6px solid var(--theme-highlight);
+            padding: 25px 30px;
+            margin: 30px 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            font-size: calc(var(--body-size) * 0.95);
+            line-height: 1.6;
+        }
+
+        .highlight-box strong {
+            color: var(--theme-highlight);
+        }
+
+        .important-box {
+            background: rgba(59, 130, 246, 0.06);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(59, 130, 246, 0.20);
+            border-left: 6px solid #3b82f6;
+            padding: 25px 30px;
+            margin: 30px 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            font-size: calc(var(--body-size) * 0.95);
+            line-height: 1.6;
+        }
+
+        .important-box strong {
+            color: #3b82f6;
+        }
+
+        .warning-box {
+            background: rgba(245, 158, 11, 0.06);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(245, 158, 11, 0.20);
+            border-left: 6px solid #f59e0b;
+            padding: 25px 30px;
+            margin: 30px 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            font-size: calc(var(--body-size) * 0.95);
+            line-height: 1.6;
+        }
+
+        .warning-box strong {
+            color: #f59e0b;
+        }
+
+        .tip-box {
+            background: rgba(34, 197, 94, 0.06);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(34, 197, 94, 0.20);
+            border-left: 6px solid #22c55e;
+            padding: 25px 30px;
+            margin: 30px 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            font-size: calc(var(--body-size) * 0.95);
+            line-height: 1.6;
+        }
+
+        .tip-box strong {
+            color: #27ae60;
+        }
+
+        /* Table styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: calc(var(--body-size) * 0.6);
+            margin: 20px 0;
+        }
+
+        th {
+            background: var(--theme-primary);
+            color: white;
+            padding: 12px 16px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid rgba(204, 0, 0, 0.3);
+        }
+
+        td {
+            padding: 10px 16px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        tr:nth-child(even) td {
+            background: #f5f1e5;
+        }
+
+        tr:hover td {
+            background: rgba(204, 0, 0, 0.04);
+        }
+
+        /* ===========================================
+           TABLE LAYOUT SYSTEM
+           Knobs: --w --x --y (position) + --tab-size (font)
+                  --pad-h --pad-v (cell padding)
+                  --cap-size --cap-y (caption)
+           =========================================== */
+        .tab {
+            --w: 100%;
+            --x: 0px;
+            --y: 0px;
+            --tab-size: calc(var(--body-size) * 0.6);
+            --pad-h: 16px;
+            --pad-v: 10px;
+            --cap-size: calc(var(--body-size) * 0.5);
+            --cap-y: 0px;
+            width: var(--w);
+            transform: translate(var(--x), var(--y));
+        }
+
+        .tab table {
+            width: 100%;
+            font-size: var(--tab-size);
+        }
+
+        .tab th {
+            padding: var(--pad-v) var(--pad-h);
+        }
+
+        .tab td {
+            padding: var(--pad-v) var(--pad-h);
+        }
+
+        .tab .caption {
+            font-size: var(--cap-size);
+            color: #666;
+            text-align: center;
+            margin-top: 4px;
+            transform: translateY(var(--cap-y));
+        }
+
+        /* Figure grid */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 8px;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+        }
+
+        .image-grid img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .figure-frame {
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .figure-frame img {
+            max-width: 100%;
+            max-height: 28vh;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .figure-frame .caption {
+            font-size: calc(var(--body-size) * 0.5);
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* ===========================================
+           FIGURE LAYOUT SYSTEM
+           Knobs: --w --h --x --y --gap (layout) + --cap-size --cap-y (caption)
+           =========================================== */
+        .fig {
+            --w: 100%;
+            --h: 100%;
+            --x: 0px;
+            --y: 0px;
+            --gap: 15px;
+            --cap-size: calc(var(--body-size) * 0.5);
+            --cap-y: 0px;
+            display: grid;
+            gap: var(--gap);
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+            align-items: center;
+            justify-items: center;
+            transform: translate(var(--x), var(--y));
+        }
+
+        .fig img {
+            max-width: var(--w);
+            max-height: var(--h);
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .fig .figure-frame img {
+            width: auto;
+            height: auto;
+        }
+
+        .fig .caption {
+            font-size: var(--cap-size);
+            color: #666;
+            text-align: center;
+            margin-top: 2px;
+            transform: translateY(var(--cap-y));
+        }
+
+        /* 1-column presets */
+        .fig-1 {
+            grid-template-columns: 1fr;
+            --h: 70vh;
+        }
+
+        .fig-2x1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr 1fr;
+            --h: 40vh;
+        }
+
+        .fig-3x1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            --h: 28vh;
+        }
+
+        .fig-4x1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr 1fr 1fr 1fr;
+            --h: 20vh;
+        }
+
+        /* 2-column presets */
+        .fig-1x2 {
+            grid-template-columns: 1fr 1fr;
+            --h: 65vh;
+        }
+
+        .fig-2x2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            --h: 38vh;
+        }
+
+        .fig-3x2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            --h: 28vh;
+        }
+
+        .fig-4x2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr 1fr;
+            --h: 20vh;
+        }
+
+        /* 3-column presets */
+        .fig-1x3 {
+            grid-template-columns: 1fr 1fr 1fr;
+            --h: 60vh;
+        }
+
+        .fig-2x3 {
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            --h: 35vh;
+        }
+
+        .fig-3x3 {
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            --h: 25vh;
+        }
+
+        .fig-4x3 {
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr 1fr;
+            --h: 18vh;
+        }
+
+        /* 4-column presets */
+        .fig-1x4 {
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            --h: 55vh;
+        }
+
+        .fig-2x4 {
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            --h: 32vh;
+        }
+
+        .fig-3x4 {
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            --h: 22vh;
+        }
+
+        .fig-4x4 {
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr 1fr;
+            --h: 16vh;
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity var(--duration-normal), transform var(--duration-normal);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .d1 {
+            transition-delay: 0.1s;
+        }
+
+        .d2 {
+            transition-delay: 0.2s;
+        }
+
+        .d3 {
+            transition-delay: 0.3s;
+        }
+
+        /* === MAC TERMINAL CODE BLOCK === */
+        .mac-terminal {
+            --term-accent: #39d353;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+            font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .mac-terminal-bar {
+            background: linear-gradient(180deg, #f6f6f6, #dfdfdf);
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #c2c2c2;
+        }
+
+        .mac-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .mac-dot-red {
+            background: #ff5f57;
+            box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .mac-dot-yellow {
+            background: #febc2e;
+            box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .mac-dot-green {
+            background: #28c840;
+            box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .mac-terminal-title {
+            flex: 1;
+            text-align: center;
+            font-size: 13px;
+            color: #4d4d4d;
+            font-weight: 700;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            letter-spacing: 0;
+            margin-right: 44px; /* visually center text by offsetting the dot gap */
+        }
+
+        .mac-terminal-body {
+            background: #1e1e2e;
+            padding: 18px 20px;
+            min-height: 120px;
+            overflow: hidden;
+        }
+
+        .mac-terminal-code {
+            font-size: clamp(11px, 1.3vw, 14px);
+            line-height: 1.65;
+            color: #cdd6f4;
+            margin: 0;
+            white-space: pre;
+            overflow-x: auto;
+            font-family: inherit;
+        }
+
+        /* Syntax highlight tokens (dark-theme defaults, overridden by light skins) */
+        .term-prompt {
+            color: #a6e3a1;
+            font-weight: 700;
+        }
+
+        .term-cmd {
+            color: #89b4fa;
+            font-weight: 700;
+        }
+
+        .term-dim {
+            color: #585b70;
+        }
+
+        .term-green {
+            color: #a6e3a1;
+        }
+
+        .term-highlight {
+            color: #f9e2af;
+            font-weight: 700;
+            background: rgba(249, 226, 175, 0.12);
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
+        .term-comment {
+            color: #6c7086;
+            font-style: italic;
+        }
+
+        .term-keyword {
+            color: #cba6f7;
+            font-weight: 600;
+        }
+
+        .term-func {
+            color: #89b4fa;
+        }
+
+        .term-string {
+            color: #a6e3a1;
+        }
+
+        .term-num {
+            color: #fab387;
+        }
+
+        .term-type {
+            color: #94e2d5;
+            font-weight: 600;
+        }
+
+        .term-tag {
+            color: #f38ba8;
+        }
+
+        .term-attr {
+            color: #f9e2af;
+        }
+
+        .term-cursor {
+            color: #cdd6f4;
+            animation: blink-cursor 1s step-end infinite;
+        }
+
+        /* Typewriter animation: lines hidden by default */
+        .term-line {
+            opacity: 0;
+            transform: translateY(4px);
+            display: block;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+
+        .term-line-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Line numbers for code editor panels (VSCode style) */
+        .mac-terminal-lined {
+            counter-reset: line-num;
+            padding-left: 0;
+        }
+
+        .mac-terminal-lined .mac-terminal-code {
+            padding-left: 0;
+        }
+
+        .mac-terminal-lined .code-line {
+            display: block;
+            counter-increment: line-num;
+            padding-left: 3.8em;
+            position: relative;
+        }
+
+        .mac-terminal-lined .code-line::before {
+            content: counter(line-num);
+            position: absolute;
+            left: 0;
+            width: 2.8em;
+            padding-right: 0.6em;
+            text-align: right;
+            color: #6c7086;
+            font-size: inherit;
+            user-select: none;
+            box-sizing: border-box;
+        }
+
+        @keyframes blink-cursor {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        body.edit-mode [data-live-edit-drag="true"] {
+            cursor: move;
+        }
+
+        body.edit-mode [data-live-edit-text="true"] {
+            outline: 2px dashed color-mix(in srgb, var(--theme-primary) 40%, transparent);
+            outline-offset: 4px;
+            border-radius: 4px;
+            cursor: text;
+        }
+
+        /* ===========================================
+           PRINT MEDIA STYLES (Vector PDF Generation)
+           =========================================== */
+        @media print {
+            @page {
+                size: 1920px 1080px;
+                margin: 0;
+            }
+            html, body {
+                width: 1920px !important;
+                height: 1080px !important;
+                overflow: visible !important;
+                background: transparent !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            #scale-wrapper {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 1920px !important;
+                height: 1080px !important;
+                transform: none !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+            }
+            .slides-scroller {
+                position: static !important;
+                overflow: visible !important;
+                height: auto !important;
+                width: 100% !important;
+            }
+            .slide {
+                display: flex !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                position: relative !important;
+                width: 1920px !important;
+                height: 1080px !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                overflow: hidden !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background-image: none !important;
+            }
+            .reveal {
+                opacity: 1 !important;
+                transform: none !important;
+                visibility: visible !important;
+                transition: none !important;
+            }
+            
+            body > .global-header,
+            body > .global-footer,
+            body > .global-logos,
+            #scale-wrapper > .global-header,
+            #scale-wrapper > .global-footer,
+            #scale-wrapper > .global-logos,
+            #globalHeader,
+            #globalFooter,
+            #globalLogos {
+                display: none !important;
+            }
+            
+            .local-print-header {
+                display: flex !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 1920px !important;
+                height: var(--header-height) !important;
+                z-index: 1000 !important;
+            }
+            
+            .local-print-logos {
+                display: flex !important;
+                position: absolute !important;
+                top: 12px !important;
+                right: 0 !important;
+                height: calc(var(--header-height) - 4px) !important;
+                z-index: 1001 !important;
+            }
+            
+            .local-print-footer {
+                display: flex !important;
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                width: 1920px !important;
+                height: var(--footer-height) !important;
+                z-index: 1000 !important;
+            }
+
+            .highlight-box,
+            .important-box,
+            .warning-box,
+            .tip-box {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                box-shadow: none !important;
+            }
+
+            .slide[data-header="hidden"] .local-print-header {
+                display: none !important;
+            }
+            
+            .transition-slide .local-print-header,
+            .transition-slide .local-print-logos,
+            .transition-slide .local-print-footer {
+                display: none !important;
+            }
+            
+            mjx-container svg path {
+                stroke: none !important;
+                stroke-width: 0 !important;
+            }
+            mjx-container {
+                font-weight: normal !important;
+            }
+        }
+
+        @media screen {
+            .local-print-header,
+            .local-print-footer,
+            .local-print-logos {
+                display: none !important;
+            }
+        }
+
+        /* === Comment mode (C): pins + review panel. Rendered only while active, so the
+           deck and the PDF export stay clean by construction. ============================ */
+        .slide { position: relative; }
+        body.comment-mode #scale-wrapper { cursor: crosshair; }
+        .cmt-pin {
+            position: absolute; z-index: 800; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+            border-radius: 50%; background: #c8102e; color: #fff; border: 2px solid #fff;
+            font: 700 16px/30px 'Segoe UI', Helvetica, Arial, sans-serif; text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.35); cursor: pointer; display: none;
+        }
+        .cmt-pin.resolved { background: #6b7280; }
+        body.comment-mode .cmt-pin { display: block; }
+        .cmt-panel {
+            position: fixed; top: 0; right: 0; height: 100%; width: 360px; z-index: 9000;
+            background: #ffffff; color: #1f2937; border-left: 1px solid rgba(0,0,0,0.15);
+            box-shadow: -6px 0 24px rgba(0,0,0,0.18); transform: translateX(100%);
+            transition: transform 0.25s ease; display: flex; flex-direction: column;
+            font: 14px/1.4 'Segoe UI', Helvetica, Arial, sans-serif;
+        }
+        body.comment-mode .cmt-panel { transform: translateX(0); }
+        .cmt-panel header { padding: 12px 14px; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .cmt-panel header strong { flex: 1 1 100%; font-size: 15px; }
+        .cmt-panel header input { flex: 1 1 100%; padding: 5px 8px; border: 1px solid rgba(0,0,0,0.2); border-radius: 4px; font: inherit; }
+        .cmt-panel button { padding: 4px 9px; border: 1px solid rgba(0,0,0,0.2); border-radius: 4px; background: #f9fafb; font: inherit; font-size: 12px; cursor: pointer; }
+        .cmt-panel button:hover { background: #eef2ff; }
+        .cmt-panel .cmt-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+        .cmt-panel h4 { margin: 10px 14px 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; cursor: pointer; }
+        .cmt-row { padding: 6px 14px 6px 46px; position: relative; cursor: pointer; }
+        .cmt-row:hover { background: #f3f4f6; }
+        .cmt-row .n { position: absolute; left: 14px; top: 6px; width: 24px; height: 24px; border-radius: 50%; background: #c8102e; color: #fff; font-size: 12px; line-height: 24px; text-align: center; font-weight: 700; }
+        .cmt-row.resolved .n { background: #9ca3af; }
+        .cmt-row.resolved .txt { text-decoration: line-through; color: #9ca3af; }
+        .cmt-row .meta { font-size: 11px; color: #6b7280; }
+        .cmt-row .act { margin-top: 3px; display: flex; gap: 6px; }
+        .cmt-row .act button { font-size: 11px; padding: 2px 7px; }
+        .cmt-popup {
+            position: fixed; z-index: 9500; width: 320px; background: #fff; border: 1px solid rgba(0,0,0,0.2);
+            border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); padding: 10px;
+            font: 14px 'Segoe UI', Helvetica, Arial, sans-serif;
+        }
+        .cmt-popup textarea { width: 100%; height: 90px; box-sizing: border-box; font: inherit; padding: 6px; border: 1px solid rgba(0,0,0,0.2); border-radius: 4px; resize: vertical; }
+        .cmt-popup .row { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+        .cmt-popup button { padding: 4px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 4px; background: #f9fafb; font: inherit; font-size: 12px; cursor: pointer; }
+        .cmt-popup button.primary { background: #c8102e; color: #fff; border-color: #c8102e; }
+        html.rv-instant .cmt-pin, html.rv-instant .cmt-panel, html.rv-instant .cmt-popup { display: none !important; }
+
+        /* Wide wordmark logos must not squash square ones */
+        .logo-img { max-width: 260px; object-fit: contain; }
+
+        /* === Steps (fragment-aware navigation, see SlidePresentation.setupKeyboardNav) ===
+           <el class="st" data-st="N">                 appears at step N (opacity only: keeps its box)
+           <el class="st pop" data-st="N">             rise-and-scale entrance
+           <el class="st" data-st="N" data-until="M">  transient, gone after step M; display:none in print
+           .dot / .curvepath inside a stepped group: staggered children (set --di on each dot) */
+        .st { opacity: 0; transition: opacity 0.45s ease; }
+        .st.on { opacity: 1; }
+        .st.pop { transform: translateY(12px) scale(0.97); transition: opacity 0.45s ease, transform 0.45s ease; }
+        .st.pop.on { transform: none; }
+        .st .dot { opacity: 0; transition: opacity 0.3s ease; }
+        .st.on .dot { opacity: 1; transition-delay: calc(var(--di, 0) * 90ms); }
+        .st .curvepath { opacity: 0; transition: opacity 0.5s ease; }
+        .st.on .curvepath { opacity: 1; transition-delay: 1.35s; }
+        /* Headless export (navigator.webdriver): every reveal and step lands instantly */
+        html.rv-instant .reveal { transition: none !important; opacity: 1 !important; transform: none !important; }
+        html.rv-instant .st, html.rv-instant .st * { opacity: 1 !important; transition: none !important; }
+        html.rv-instant .st[data-until] { display: none !important; }
+    
+        /* === SKIN: paper === */
+/* Skin: Paper — ink on paper, serif headings, mono chrome (the κc workshop look) */
+/* Google Fonts: EB+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Mono:wght@400;500 */
+
+/* Ported by intent from the κc Higgs-workshop deck captured in
+   reference/captures/kappac-hig-workshop-2026/LAYOUT.md: paper ground, serif
+   headings, system-sans body, mono metadata, transparent chrome over
+   hairlines, thin progress bar, act-labelled transition gates.
+   Default palette is white/navy with a purple secondary; the original
+   cream/maroon (paper #f6f1e7, ink #1c1712, accent #8a1f1f) is one edit of
+   :root away. Transition gates take their eyebrow ("PART 2", "APPENDIX") from
+   the inline custom property --act that init-slides.py writes on each gate;
+   set it by hand on gates you add. To drop the gate's vertical bar as well,
+   add: .transition-slide::before { display: none; }
+   Step / reveal mechanics live in the template, not here. */
+
+:root {
+    --theme-bg: #fcfcfb;
+    --theme-primary: #1a4480;        /* navy: headings, links, table heads, chip A */
+    --theme-secondary: #4e2a84;      /* purple: important boxes, chip B */
+    --theme-accent: #9fb9dd;
+    --theme-highlight: #1a4480;
+    --theme-progress: #1a4480;
+    --theme-text: #191c20;
+    --ink-soft: #5c636e;
+    --card: #ffffff;
+    --hairline: rgba(25, 28, 32, 0.14);
+    --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+    --font-body: var(--font-sans);
+    --font-comic: var(--font-serif);   /* transition slides go serif, not Comic Sans */
+    --duration-normal: 0.65s;          /* kappac scene-in 650 ms */
+}
+
+/* Ground: soft radial wash, no texture */
+.slide {
+    background-color: var(--theme-bg);
+    background-image: radial-gradient(ellipse at 50% 30%, #ffffff 0%, #f4f6f9 100%);
+    background-size: 100% 100%;
+}
+
+/* --- Chrome: quiet header, section label in serif ---------------------- */
+.global-header {
+    background: transparent;
+    box-shadow: none;
+    border-bottom: 1px solid var(--hairline);
+    padding-left: 60px;
+}
+.header-text {
+    color: var(--theme-primary);
+    font-family: var(--font-serif);
+    font-weight: 700;                  /* 600 washes out at projection distance */
+    font-size: 42px;
+    letter-spacing: 0.2px;
+}
+.logo-img {
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
+    background-color: var(--card);
+}
+/* Wide wordmark logos (7:1) squash square ones: cap them inline in the HTML,
+   e.g. style="max-width: 250px; height: 78%;" on the <img>. */
+
+/* --- Chrome: mono footer over a hairline ------------------------------- */
+.global-footer {
+    background: transparent;
+    box-shadow: none;
+    border-top: 1px solid var(--hairline);
+    color: var(--ink-soft);
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: 19px;                   /* 18 px is the floor for anything on screen */
+}
+.global-footer .highlight-accent { color: var(--theme-primary); }
+
+/* Thin progress bar, kappac-style */
+.progress-container { height: 3px; gap: 0; }
+.progress-segment { background: rgba(25, 28, 32, 0.07); }
+.progress-segment.active { background: var(--theme-progress); box-shadow: none; }
+
+/* --- Title slide: ink serif on paper, italic accent -------------------- */
+.title-banner {
+    background: transparent;
+    color: var(--theme-text);
+    padding: 70px 140px 10px;
+    margin-top: 30px;
+    margin-bottom: 10px;
+}
+.title-banner h1 {
+    font-family: var(--font-serif);
+    font-size: 82px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.12;
+}
+.title-banner .highlight-accent { color: var(--theme-primary); font-style: italic; }
+.title-banner h2 {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 34px;
+    color: var(--ink-soft);
+    margin-top: 26px;
+}
+.title-banner::after {
+    content: '';
+    display: block;
+    width: 220px;
+    height: 4px;
+    background: var(--theme-primary);
+    margin: 42px auto 0;
+    border-radius: 2px;
+}
+.author-info { font-family: var(--font-sans); }
+.author-info a { color: var(--theme-primary) !important; }
+
+/* --- Transition slides: mono eyebrow + serif italic --------------------
+   The eyebrow text is the gate section's inline custom property --act
+   (init-slides.py writes Part N / Appendix). Do NOT use CSS counters for
+   this: hidden siblings do not increment in the headless PDF export and
+   every gate would print "Part 1".                                          */
+.transition-text {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 104px;
+    color: var(--theme-text);
+    letter-spacing: -1px;
+}
+.transition-text::before {
+    content: var(--act, '');
+    display: block;
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-weight: 500;
+    font-size: 24px;
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: var(--theme-primary);
+    margin-bottom: 30px;
+}
+
+/* --- Body text ---------------------------------------------------------- */
+.bullet-list { font-family: var(--font-sans); }
+.bullet-list li { line-height: 1.45; }
+.bullet-list a { color: var(--theme-primary); }
+/* Dense mode for figure-heavy slides */
+.bullet-list.dense li { margin-bottom: 12px; }
+.bullet-list.dense li ul { margin-top: 6px; }
+.bullet-list.dense li ul li { margin-bottom: 6px; }
+
+/* --- Boxes: paper cards, muted accents --------------------------------- */
+.highlight-box, .important-box, .warning-box, .tip-box {
+    background: var(--card);
+    backdrop-filter: none;
+    border: 1px solid rgba(25, 28, 32, 0.10);
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+    font-family: var(--font-sans);
+}
+.highlight-box { border-left: 6px solid var(--theme-primary); }
+.highlight-box strong { color: var(--theme-primary); }
+.important-box { border-left: 6px solid var(--theme-secondary); }
+.important-box strong { color: var(--theme-secondary); }
+.warning-box { border-left: 6px solid #b07a1f; }
+.warning-box strong { color: #b07a1f; }
+.tip-box { border-left: 6px solid #4a6741; }
+.tip-box strong { color: #4a6741; }
+
+/* --- Tables: serif header on paper rows -------------------------------- */
+th {
+    background: var(--theme-primary);
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(26, 68, 128, 0.35);
+}
+td {
+    font-family: var(--font-sans);
+    background: var(--card);
+    border: 1px solid rgba(28, 23, 18, 0.10);
+}
+tr:nth-child(even) td { background: #f3f6fa; }
+tr:hover td { background: rgba(26, 68, 128, 0.05); }
+
+/* --- Figures: framed as paper cards, mono captions --------------------- */
+.fig .figure-frame {
+    background: var(--card);
+    border: 1px solid rgba(25, 28, 32, 0.09);
+    border-radius: 6px;
+    padding: 10px 10px 6px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+.fig .figure-frame img { box-shadow: none; }
+.fig .caption, .figure-frame .caption, .tab .caption {
+    font-family: var(--font-mono);
+    color: var(--ink-soft);
+    margin-top: 6px;
+    font-size: 20px;
+}
+
+/* --- Scope chips: a small mono tag, top-right under the logos ----------
+   Two semantic slots. In the HGCal deck: .public = already in the public
+   DP note (blue), .new = only in the paper under review (purple). Use
+   .inline to put a chip inside a bullet when a slide mixes scopes.        */
+.scope-tag {
+    position: absolute; top: 72px; right: 60px; z-index: 500;
+    font-family: var(--font-mono); font-size: 16px; letter-spacing: 0.12em;
+    padding: 5px 12px; border-radius: 4px; border: 1px solid; white-space: nowrap;
+}
+.scope-tag.public { color: var(--theme-primary);   border-color: rgba(26,68,128,.45); background: rgba(26,68,128,.07); }
+.scope-tag.new    { color: var(--theme-secondary); border-color: rgba(78,42,132,.45); background: rgba(78,42,132,.07); }
+.scope-tag.inline { position: static; display: inline-block; margin: 0 6px; font-size: 0.72em; vertical-align: 2px; }
+
+/* --- Schematic cards: inline-SVG drawings framed like figures ---------- */
+.schematic-card {
+    background: var(--card); border: 1px solid rgba(25,28,32,.09); border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(15,23,42,.06); padding: 12px 14px 8px; text-align: center;
+}
+.schematic-card .caption { font-family: var(--font-mono); color: var(--ink-soft); font-size: 19px; margin-top: 4px; }
+
+/* --- Reveal: 14 px rise (the engine handles the fade) ------------------ */
+.reveal { transform: translateY(14px); }
+
+    </style>
+    <!-- Toy example: MathJax and the Google Fonts link from init-slides.py were
+         removed so this deck renders offline. The paper skin falls back to
+         Georgia / system sans. This file is a scaffold from
+         upstream/frontend-slides-PKU/scripts/init-slides.py with the slide
+         bodies replaced. It is simulated content, not a CMS result. -->
+</head>
+
+<body>
+
+    <!-- ==== Smart Scaling Container ==== -->
+    <div id="scale-wrapper">
+
+        <!-- Global widget: top-right Logo group (dynamically injected by init-slides.py --logos) -->
+        <div class="global-logos" id="globalLogos">
+                        <!-- no logos -->
+        </div>
+
+        <!-- Global widget: top header bar (visible on normal/outline slides only) -->
+        <div class="global-header hidden" id="globalHeader">
+            <div class="header-text" id="headerText">Title Placeholder</div>
+        </div>
+
+        <!-- Segmented progress bar -->
+        <div class="progress-container" id="progressContainer"></div>
+
+        <!-- Global widget: bottom footer bar -->
+        <div class="global-footer">
+            <div class="footer-left">
+                A <span class="highlight-accent">toy</span> mass peak
+            </div>
+            <div class="footer-center">
+                A. Toy
+            </div>
+            <div class="footer-right">
+                Toy workshop — not CMS <span id="pageNumber" style="margin-left: 0.5rem;">1</span>
+            </div>
+        </div>
+
+        <!-- ==== Internal slide scroller ==== -->
+        <div class="slides-scroller" id="slidesScroller">
+            
+    <!-- [Slide 1] Title Slide -->
+    <section class="slide title-slide visible" data-header="hidden" data-title="">
+        <div style="position:absolute;top:10px;right:36px;z-index:1100;font-family:var(--font-mono);font-size:18px;letter-spacing:0.14em;padding:6px 12px;border:1px solid rgba(26,68,128,.45);color:var(--theme-primary);background:rgba(26,68,128,.07);">TOY / SIMULATED</div>
+        <div class="title-banner reveal d1">
+            <h1>A <span class="highlight-accent">toy</span> mass peak</h1>
+            <h2>SIMULATED — not a CMS result</h2>
+        </div>
+        <div class="author-info reveal d2">
+            <p><u style="text-decoration: underline; text-underline-offset: 0.25em; text-decoration-skip-ink: none;">A. Toy</u><sup>1</sup></p>
+            <p style="margin-top: 1rem;"><sup>1</sup> Toy Institute (simulated)</p>
+            <p style="margin-top: 2rem; font-size: 0.8em;">10 Nov 2026</p>
+            <p style="margin-top: 1.2rem; font-size: 0.72em;">Public toy example for the video pipeline. No CMS data and no measurement.</p>
+        </div>
+    </section>
+
+    <!-- [Slide 2] Content: Simulated lineshape -->
+    <section class="slide normal-slide" data-header="visible" data-title="A simulated lineshape">
+        <div style="position:absolute;top:10px;right:36px;z-index:1100;font-family:var(--font-mono);font-size:18px;letter-spacing:0.14em;padding:6px 12px;border:1px solid rgba(26,68,128,.45);color:var(--theme-primary);background:rgba(26,68,128,.07);">TOY / SIMULATED</div>
+        <div class="slide-content">
+            <h2 style="margin-top: 12px; font-family: var(--font-serif); font-size: 48px;">A simulated lineshape</h2>
+            <p class="caption" style="font-family: var(--font-mono); font-size: 24px; color: var(--ink-soft); margin-top: 8px;">The curve is a drawing. It is not a fit to data.</p>
+            <div class="st pop schematic-card" data-st="1" style="margin-top: 18px;">
+                <svg viewBox="0 0 900 300" width="1100" height="367" role="img" aria-label="Toy Gaussian, simulated">
+                    <line x1="70" y1="250" x2="830" y2="250" stroke="#1a4480" stroke-width="2"/>
+                    <line x1="70" y1="40" x2="70" y2="250" stroke="#1a4480" stroke-width="2"/>
+                    <path d="M 70.0,250.0 L 76.3,250.0 L 82.7,250.0 L 89.0,250.0 L 95.3,250.0 L 101.7,250.0 L 108.0,250.0 L 114.3,250.0 L 120.7,250.0 L 127.0,250.0 L 133.3,250.0 L 139.7,250.0 L 146.0,250.0 L 152.3,250.0 L 158.7,250.0 L 165.0,250.0 L 171.3,250.0 L 177.7,250.0 L 184.0,250.0 L 190.3,249.9 L 196.7,249.9 L 203.0,249.9 L 209.3,249.8 L 215.7,249.8 L 222.0,249.7 L 228.3,249.5 L 234.7,249.3 L 241.0,249.1 L 247.3,248.7 L 253.7,248.2 L 260.0,247.6 L 266.3,246.8 L 272.7,245.8 L 279.0,244.5 L 285.3,242.8 L 291.7,240.8 L 298.0,238.3 L 304.3,235.2 L 310.7,231.5 L 317.0,227.2 L 323.3,222.1 L 329.7,216.2 L 336.0,209.4 L 342.3,201.8 L 348.7,193.3 L 355.0,183.9 L 361.3,173.8 L 367.7,162.9 L 374.0,151.5 L 380.3,139.7 L 386.7,127.7 L 393.0,115.7 L 399.3,104.0 L 405.7,92.9 L 412.0,82.5 L 418.3,73.2 L 424.7,65.1 L 431.0,58.7 L 437.3,53.9 L 443.7,51.0 L 450.0,50.0 L 456.3,51.0 L 462.7,53.9 L 469.0,58.7 L 475.3,65.1 L 481.7,73.2 L 488.0,82.5 L 494.3,92.9 L 500.7,104.0 L 507.0,115.7 L 513.3,127.7 L 519.7,139.7 L 526.0,151.5 L 532.3,162.9 L 538.7,173.8 L 545.0,183.9 L 551.3,193.3 L 557.7,201.8 L 564.0,209.4 L 570.3,216.2 L 576.7,222.1 L 583.0,227.2 L 589.3,231.5 L 595.7,235.2 L 602.0,238.3 L 608.3,240.8 L 614.7,242.8 L 621.0,244.5 L 627.3,245.8 L 633.7,246.8 L 640.0,247.6 L 646.3,248.2 L 652.7,248.7 L 659.0,249.1 L 665.3,249.3 L 671.7,249.5 L 678.0,249.7 L 684.3,249.8 L 690.7,249.8 L 697.0,249.9 L 703.3,249.9 L 709.7,249.9 L 716.0,250.0 L 722.3,250.0 L 728.7,250.0 L 735.0,250.0 L 741.3,250.0 L 747.7,250.0 L 754.0,250.0 L 760.3,250.0 L 766.7,250.0 L 773.0,250.0 L 779.3,250.0 L 785.7,250.0 L 792.0,250.0 L 798.3,250.0 L 804.7,250.0 L 811.0,250.0 L 817.3,250.0 L 823.7,250.0 L 830.0,250.0" fill="none" stroke="#4e2a84" stroke-width="4"/>
+                    <text x="450" y="282" text-anchor="middle" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="16" fill="#5c636e">arbitrary horizontal axis, centred at 125</text>
+                </svg>
+                <div class="caption">Toy Gaussian, drawn in the slide. Not a measurement.</div>
+            </div>
+            <ul class="bullet-list" style="margin-top: 16px; font-size: 30px;">
+                <li class="st" data-st="2">Made-up fit: χ² / ndf = 1.1. Not a result.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- [Slide 3] Content: Pronunciation -->
+    <section class="slide normal-slide" data-header="visible" data-title="What the voice has to say">
+        <div style="position:absolute;top:10px;right:36px;z-index:1100;font-family:var(--font-mono);font-size:18px;letter-spacing:0.14em;padding:6px 12px;border:1px solid rgba(26,68,128,.45);color:var(--theme-primary);background:rgba(26,68,128,.07);">TOY / SIMULATED</div>
+        <div class="slide-content">
+            <h2 style="margin-top: 12px; font-family: var(--font-serif); font-size: 48px;">What the voice has to say</h2>
+            <p class="caption" style="font-family: var(--font-mono); font-size: 24px; color: var(--ink-soft); margin-top: 8px;">Made-up symbols for the pronunciation lexicon. Not a CMS result.</p>
+            <ul class="bullet-list st" data-st="1" style="margin-top: 36px; font-size: 34px;">
+                <li>J/ψ and tt̄</li>
+                <li>13.6 TeV, and 10 fb⁻¹ (made up)</li>
+                <li>H→bb, ZH, WH</li>
+                <li>p_T, η, φ, σ, χ²</li>
+            </ul>
+        </div>
+    </section>
+    <!-- END slides-scroller -->
+        </div>
+    </div> <!-- end scale-wrapper -->
+
+    <script>
+        // 1. Smart scaling engine
+        function applyScale() {
+            const wrapper = document.getElementById('scale-wrapper');
+            if (!wrapper) return;
+            const targetWidth = 1920;
+            const targetHeight = 1080;
+            const scale = Math.min(window.innerWidth / targetWidth, window.innerHeight / targetHeight);
+            wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+        window.addEventListener('resize', applyScale);
+
+        // 2. Interaction manager
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                if (this.slides.length === 0) return;
+
+                this.header = document.getElementById('globalHeader');
+                this.headerText = document.getElementById('headerText');
+                this.pageNum = document.getElementById('pageNumber');
+                this.scroller = document.getElementById('slidesScroller');
+                this.isEditMode = false;
+                this.stepState = new Map();
+                // Headless export (Playwright): land every reveal and step instantly, no animation state
+                if (navigator.webdriver) document.documentElement.classList.add('rv-instant');
+
+                this.setupIntersectionObserver();
+                this.setupEditMode();
+                this.setupKeyboardNav();
+                this.setupWheelNav();
+
+                applyScale();
+
+                // Restore saved slide position (survives Live Server hot-reload)
+                const savedSlide = sessionStorage.getItem('savedSlideIndex');
+                if (savedSlide !== null) {
+                    setTimeout(() => {
+                        this.scroller.scrollTo({ top: parseInt(savedSlide) * 1080, behavior: 'instant' });
+                    }, 50);
+                }
+            }
+
+            setupWheelNav() {
+                let isWheeling = false;
+                window.addEventListener('wheel', (e) => {
+                    if (isWheeling) return;
+                    const currentIndex = Math.round(this.scroller.scrollTop / 1080);
+                    if (e.deltaY > 2) {
+                        if (currentIndex < this.slides.length - 1) {
+                            isWheeling = true;
+                            this.scroller.scrollTo({ top: (currentIndex + 1) * 1080, behavior: 'smooth' });
+                            setTimeout(() => { isWheeling = false; }, 600);
+                        }
+                    } else if (e.deltaY < -2) {
+                        if (currentIndex > 0) {
+                            isWheeling = true;
+                            this.scroller.scrollTo({ top: (currentIndex - 1) * 1080, behavior: 'smooth' });
+                            setTimeout(() => { isWheeling = false; }, 600);
+                        }
+                    }
+                }, { passive: false });
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+
+                            const index = Array.from(this.slides).indexOf(entry.target) + 1;
+
+                            // Persist current slide for Live Server
+                            sessionStorage.setItem('savedSlideIndex', index - 1);
+
+                            if (this.pageNum) this.pageNum.innerText = index;
+
+                            const segments = document.querySelectorAll('.progress-segment');
+                            segments.forEach((seg, i) => {
+                                if (i < index) {
+                                    seg.classList.add('active');
+                                } else {
+                                    seg.classList.remove('active');
+                                }
+                            });
+
+                            const headerState = entry.target.getAttribute('data-header');
+                            const title = entry.target.getAttribute('data-title');
+
+                            if (headerState === 'visible') {
+                                this.header.classList.remove('hidden');
+                                this.headerText.innerHTML = title || '';
+                                if (window.MathJax && title && title.includes('$')) {
+                                    MathJax.typesetPromise([this.headerText]).catch(() => { });
+                                }
+                            } else {
+                                this.header.classList.add('hidden');
+                            }
+                        }
+                    });
+                }, { root: this.scroller, threshold: 0.5 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupEditMode() {
+                const textSelector = [
+                    '.title-banner h1', '.title-banner h2', '.author-info p', '.transition-text',
+                    '.slide-content h1', '.slide-content h2', '.slide-content h3', '.slide-content h4',
+                    '.slide-content p', '.slide-content li', '.slide-content td', '.slide-content th',
+                    '.slide-content .caption', '.slide-content .highlight-box', '.slide-content .important-box',
+                    '.slide-content .warning-box', '.slide-content .tip-box'
+                ].join(', ');
+                const dragSelector = [
+                    '.title-banner', '.author-info', '.transition-text', '.slide-content > *',
+                    '.left-col > *', '.right-col > *', '.two-col > *', '.dual-layout > *'
+                ].join(', ');
+
+                const textNodes = Array.from(document.querySelectorAll(textSelector));
+                const dragNodes = Array.from(document.querySelectorAll(dragSelector));
+
+                textNodes.forEach((el) => {
+                    el.setAttribute('data-live-edit-text', 'true');
+                });
+
+                dragNodes.forEach((el) => {
+                    el.setAttribute('data-live-edit-drag', 'true');
+                });
+
+                const setEditMode = (enabled) => {
+                    this.isEditMode = enabled;
+                    document.body.classList.toggle('edit-mode', enabled);
+
+                    textNodes.forEach((el) => {
+                        if (enabled) {
+                            el.setAttribute('contenteditable', 'true');
+                            el.setAttribute('spellcheck', 'false');
+                        } else {
+                            el.removeAttribute('contenteditable');
+                            el.removeAttribute('spellcheck');
+                            el.blur();
+                        }
+                    });
+                };
+
+                let dragInfo = null;
+                let dragRafId = null;
+                const flushDrag = () => {
+                    if (!dragInfo || !this.isEditMode) {
+                        dragRafId = null;
+                        return;
+                    }
+                    const dx = dragInfo.latestX - dragInfo.startX;
+                    const dy = dragInfo.latestY - dragInfo.startY;
+                    dragInfo.target.style.left = `${Math.round(dragInfo.baseLeft + dx)}px`;
+                    dragInfo.target.style.top = `${Math.round(dragInfo.baseTop + dy)}px`;
+                    dragRafId = null;
+                };
+                document.addEventListener('mousedown', (e) => {
+                    if (!this.isEditMode || e.button !== 0) return;
+                    const target = e.target.closest('[data-live-edit-drag="true"]');
+                    if (!target) return;
+                    if (e.target.closest('a')) return;
+
+                    const textTarget = e.target.closest('[data-live-edit-text="true"]');
+                    const forceDrag = e.shiftKey || e.altKey || e.metaKey || e.ctrlKey;
+                    
+                    if (textTarget && !forceDrag) {
+                        return; // Let browser handle text cursor placement
+                    }
+
+                    const style = window.getComputedStyle(target);
+                    if (style.position === 'static') {
+                        target.style.position = 'relative';
+                    }
+
+                    const currentLeft = parseFloat(target.style.left || '0');
+                    const currentTop = parseFloat(target.style.top || '0');
+                    dragInfo = {
+                        target,
+                        startX: e.clientX,
+                        startY: e.clientY,
+                        latestX: e.clientX,
+                        latestY: e.clientY,
+                        baseLeft: Number.isNaN(currentLeft) ? 0 : currentLeft,
+                        baseTop: Number.isNaN(currentTop) ? 0 : currentTop
+                    };
+
+                    target.style.zIndex = '1200';
+                    target.style.userSelect = 'none';
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!dragInfo || !this.isEditMode) return;
+                    dragInfo.latestX = e.clientX;
+                    dragInfo.latestY = e.clientY;
+                    if (!dragRafId) {
+                        dragRafId = requestAnimationFrame(flushDrag);
+                    }
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (!dragInfo) return;
+                    if (dragRafId) {
+                        cancelAnimationFrame(dragRafId);
+                        dragRafId = null;
+                    }
+                    dragInfo.target.style.zIndex = '';
+                    dragInfo.target.style.userSelect = '';
+                    dragInfo = null;
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    const activeEl = document.activeElement;
+                    const typingInField = activeEl && (
+                        activeEl.tagName === 'INPUT' ||
+                        activeEl.tagName === 'TEXTAREA' ||
+                        activeEl.isContentEditable
+                    );
+                    if (typingInField) return;
+
+                    if (e.key === 'e' || e.key === 'E') {
+                        setEditMode(!this.isEditMode);
+                        e.preventDefault();
+                    }
+
+                    if ((e.key === 'w' || e.key === 'W') && this.isEditMode) {
+                        setEditMode(false);
+                        if (window.slideComments) window.slideComments.beforeSave();   // bake comments, strip pin DOM
+                        const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+                        const blob = new Blob([html], { type: 'text/html' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        let filename = 'edited_presentation.html';
+                        const path = window.location.pathname;
+                        if (path) {
+                            const file = path.split('/').pop();
+                            if (file && file.endsWith('.html')) filename = file;
+                        }
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        if (window.slideComments) window.slideComments.afterSave();
+                        setEditMode(true);
+                        e.preventDefault();
+                    }
+                });
+            }
+
+            // --- Step system helpers ---
+            stepsOf(sl) { return Array.from(sl.querySelectorAll('.st')); }
+            maxStep(st) { return st.reduce((m, el) => Math.max(m, +el.dataset.st), 0); }
+            setStep(sl, c) {
+                this.stepState.set(sl, c);
+                this.stepsOf(sl).forEach((el) => {
+                    const u = el.dataset.until;
+                    el.classList.toggle('on', +el.dataset.st <= c && (u === undefined || c <= +u));
+                });
+            }
+            // mode 'fwd': arrive at step 0 (presentation flow); 'full': fully revealed.
+            // Only ever scroll ±1 slide: scroll-snap-type mandatory grabs longer smooth scrolls.
+            jumpTo(target, mode) {
+                if (target < 0 || target >= this.slides.length) return;
+                const sl = this.slides[target], st = this.stepsOf(sl);
+                if (st.length) this.setStep(sl, mode === 'fwd' ? 0 : this.maxStep(st));
+                this.scroller.scrollTo({ top: target * 1080, behavior: 'smooth' });
+            }
+
+            setupKeyboardNav() {
+                // --- Go-to-slide overlay ---
+                const overlay = document.createElement('div');
+                overlay.id = 'goto-overlay';
+                overlay.innerHTML = `
+            <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);
+                display:flex;align-items:center;justify-content:center;z-index:9999;">
+                <div style="background:#fff;border-radius:12px;padding:30px 40px;box-shadow:0 8px 32px rgba(0,0,0,0.3);
+                    text-align:center;font-family:'Times New Roman',serif;">
+                    <div style="font-size:20px;color:#888;margin-bottom:12px;">Go to Slide</div>
+                    <input id="goto-input" type="number" min="1" style="font-size:36px;width:100px;text-align:center;
+                        border:2px solid #cc0000;border-radius:8px;padding:8px;outline:none;" />
+                    <div style="font-size:14px;color:#aaa;margin-top:8px;">Enter ↵ Confirm &nbsp; Esc Cancel</div>
+                </div>
+            </div>`;
+                overlay.style.display = 'none';
+                document.body.appendChild(overlay);
+
+                const gotoInput = document.getElementById('goto-input');
+                let gotoActive = false;
+
+                const showGoto = () => {
+                    gotoActive = true;
+                    overlay.style.display = 'block';
+                    gotoInput.value = '';
+                    gotoInput.focus();
+                };
+                const hideGoto = () => {
+                    gotoActive = false;
+                    overlay.style.display = 'none';
+                };
+
+                gotoInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const n = parseInt(gotoInput.value);
+                        if (n >= 1 && n <= this.slides.length) {
+                            this.scroller.scrollTo({ top: (n - 1) * 1080, behavior: 'smooth' });
+                        }
+                        hideGoto();
+                        e.stopPropagation();
+                    } else if (e.key === 'Escape') {
+                        hideGoto();
+                        e.stopPropagation();
+                    }
+                });
+                overlay.addEventListener('click', (e) => { if (e.target === overlay.firstElementChild) hideGoto(); });
+
+                document.addEventListener('keydown', (e) => {
+                    const activeEl = document.activeElement;
+                    const typingInField = activeEl && (
+                        activeEl.tagName === 'INPUT' ||
+                        activeEl.tagName === 'TEXTAREA' ||
+                        activeEl.isContentEditable
+                    );
+                    if (typingInField) return;
+                    if (gotoActive) return;
+
+                    if (e.key === 'g' || e.key === 'G') {
+                        showGoto();
+                        return;
+                    }
+
+                    if (e.key === 'f' || e.key === 'F') {
+                        if (!document.fullscreenElement) {
+                            document.documentElement.requestFullscreen().catch(() => { });
+                        } else {
+                            if (document.exitFullscreen) {
+                                document.exitFullscreen();
+                            }
+                        }
+                        return;
+                    }
+
+                    // --- Fragment-aware navigation ---------------------------------------
+                    //   → / PageDown  next step; when steps are exhausted, next slide (step 0)
+                    //   ← / PageUp    previous step; at step 0, previous slide (fully revealed)
+                    //   ↓ / ↑ / Space whole slides, landing fully revealed (Q&A skimming)
+                    //   B reveal all steps here · R collapse to step 0
+                    // Presenter clickers send PageUp/PageDown, so the clicker drives the build.
+                    const slides = Array.from(this.slides);
+                    const i = Math.max(0, Math.min(slides.length - 1, Math.round(this.scroller.scrollTop / 1080)));
+                    const sl = slides[i], st = this.stepsOf(sl);
+                    if (e.key === 'b' || e.key === 'B') { if (st.length) this.setStep(sl, this.maxStep(st)); return; }
+                    if (e.key === 'r' || e.key === 'R') { if (st.length) this.setStep(sl, 0); return; }
+                    let K = e.key;
+                    if (K === 'PageDown') K = 'ArrowRight';
+                    if (K === 'PageUp') K = 'ArrowLeft';
+                    if (K === ' ') K = 'ArrowDown';
+                    if (K !== 'ArrowUp' && K !== 'ArrowDown' && K !== 'ArrowLeft' && K !== 'ArrowRight') return;
+                    e.preventDefault();
+                    if (e.repeat) return;                       // a leaned-on clicker must not blast through
+                    if (K === 'ArrowUp')   { this.jumpTo(i - 1, 'full'); return; }
+                    if (K === 'ArrowDown') { this.jumpTo(i + 1, 'full'); return; }
+                    const c = this.stepState.get(sl) || 0, m = this.maxStep(st);
+                    if (K === 'ArrowRight') {
+                        if (st.length && c < m) this.setStep(sl, c + 1); else this.jumpTo(i + 1, 'fwd');
+                    } else {
+                        if (st.length && c > 0) this.setStep(sl, c - 1); else this.jumpTo(i - 1, 'full');
+                    }
+                });
+            }
+        }
+        // 0. PDF Vector Print Adapter (Self-executing to ensure execution before DOM printing)
+        (() => {
+            const slides = document.querySelectorAll('.slide');
+            const globalHeader = document.querySelector('.global-header');
+            const globalFooter = document.querySelector('.global-footer');
+            const globalLogos = document.querySelector('.global-logos');
+            
+            if (!globalHeader || !globalFooter) {
+                return;
+            }
+            const totalSlides = slides.length;
+            
+            slides.forEach((slide, index) => {
+                // 1. Clone Header
+                const localHeader = globalHeader.cloneNode(true);
+                localHeader.removeAttribute('id');
+                localHeader.classList.remove('hidden');
+                localHeader.classList.add('local-print-header');
+                
+                const slideTitle = slide.getAttribute('data-title') || "";
+                const headerTextNode = localHeader.querySelector('.header-text') || localHeader.querySelector('#headerText');
+                if (headerTextNode) {
+                    headerTextNode.innerText = slideTitle;
+                    headerTextNode.removeAttribute('id');
+                }
+                slide.appendChild(localHeader);
+                
+                // 2. Clone Logos
+                if (globalLogos) {
+                    const localLogos = globalLogos.cloneNode(true);
+                    localLogos.removeAttribute('id');
+                    localLogos.classList.add('local-print-logos');
+                    slide.appendChild(localLogos);
+                }
+                
+                // 3. Clone Footer
+                const localFooter = globalFooter.cloneNode(true);
+                localFooter.removeAttribute('id');
+                localFooter.classList.add('local-print-footer');
+                
+                if (!slide.classList.contains('title-slide') && !slide.classList.contains('transition-slide')) {
+                    const footerRight = localFooter.querySelector('.footer-right') || localFooter.querySelector('#pageNumber')?.parentElement;
+                    if (footerRight) {
+                        footerRight.innerHTML = `<span>${index + 1} / ${totalSlides}</span>`;
+                    }
+                }
+                slide.appendChild(localFooter);
+            });
+        })();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('progressContainer');
+            const slidesArr = Array.from(document.querySelectorAll('.slide'));
+            let totalSlides = slidesArr.length;
+            // Find transition slide containing "Back Up" — progress bar ends before it
+            const backUpIndex = slidesArr.findIndex(s => s.classList.contains('transition-slide') && s.textContent.trim().includes('Back Up'));
+            if (backUpIndex !== -1) {
+                totalSlides = backUpIndex;
+            }
+            for (let i = 0; i < totalSlides; i++) {
+                const seg = document.createElement('div');
+                seg.className = 'progress-segment';
+                container.appendChild(seg);
+            }
+            new SlidePresentation();
+        });
+    </script>
+    <script>
+        // 3. Comment mode — reviewers drop numbered pins on slides (C to toggle).
+        //    Spec shared by the McM/PPD slides agent; pins live in localStorage with a
+        //    baked <script id="baked-comments"> fallback that travels with a W-saved file.
+        (() => {
+            if (navigator.webdriver) return;                       // never in the PDF export
+            const STORE_KEY = 'slide-comments:' + location.pathname;
+            const AUTHOR_KEY = 'slide-comments:author';
+            const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+            const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } };
+            const load = () => {
+                let fromLocal = null;
+                try { fromLocal = JSON.parse(lsGet(STORE_KEY) || 'null'); } catch (e) { }
+                if (Array.isArray(fromLocal) && fromLocal.length) return fromLocal;      // in-progress notes win
+                const baked = document.getElementById('baked-comments');
+                if (baked && baked.textContent.trim()) { try { return JSON.parse(baked.textContent) || []; } catch (e) { } }
+                return Array.isArray(fromLocal) ? fromLocal : [];
+            };
+            let comments = load();
+            let active = false;
+            const persist = () => lsSet(STORE_KEY, JSON.stringify(comments));
+            const slides = () => Array.from(document.querySelectorAll('.slide'));
+            const slideTitle = (i) => {
+                const s = slides()[i]; if (!s) return '';
+                return s.getAttribute('data-title') || (s.querySelector('.transition-text') || {}).textContent || '';
+            };
+
+            // --- panel ---
+            const panel = document.createElement('aside');
+            panel.className = 'cmt-panel';
+            panel.innerHTML = `<header>
+                <strong>Comments <span class="cmt-count"></span></strong>
+                <input class="cmt-author" placeholder="your name (saved for next time)">
+                <button data-act="md">Export Markdown</button>
+                <button data-act="json">Export JSON</button>
+                <button data-act="import">Import JSON</button>
+                <button data-act="clear">Clear all</button>
+                <input type="file" accept="application/json" class="cmt-file" style="display:none">
+              </header><div class="cmt-list"></div>`;
+            document.body.appendChild(panel);
+            const authorInput = panel.querySelector('.cmt-author');
+            authorInput.value = lsGet(AUTHOR_KEY) || '';
+            authorInput.addEventListener('change', () => lsSet(AUTHOR_KEY, authorInput.value.trim()));
+
+            const download = (name, text, type) => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([text], { type }));
+                a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            };
+            const deckName = () => ((location.pathname.split('/').pop() || 'deck').replace(/\.html?$/, ''));
+            const toMarkdown = () => {
+                const by = new Map();
+                comments.forEach((c) => { if (!by.has(c.slide)) by.set(c.slide, []); by.get(c.slide).push(c); });
+                const out = [`# Comments on ${document.title}`, ''];
+                Array.from(by.keys()).sort((a, b) => a - b).forEach((i) => {
+                    out.push(`## Slide ${i + 1} — ${slideTitle(i)}`);
+                    by.get(i).forEach((c) => {
+                        const txt = c.resolved ? `~~${c.text}~~` : c.text;
+                        out.push(`- ${txt}  \n  _(${c.author || 'anon'}, ${c.date})_`);
+                    });
+                    out.push('');
+                });
+                return out.join('\n');
+            };
+            panel.addEventListener('click', (e) => {
+                const b = e.target.closest('button'); if (!b) return;
+                const act = b.dataset.act;
+                if (act === 'md') download(deckName() + '-comments.md', toMarkdown(), 'text/markdown');
+                if (act === 'json') download(deckName() + '-comments.json', JSON.stringify(comments, null, 2), 'application/json');
+                if (act === 'import') panel.querySelector('.cmt-file').click();
+                if (act === 'clear' && confirm('Delete all comments on this deck?')) { comments = []; persist(); renderAll(); }
+                const row = e.target.closest('.cmt-row');
+                if (row && act === 'resolve') { const c = comments.find((x) => x.id === row.dataset.id); c.resolved = !c.resolved; persist(); renderAll(); }
+                if (row && act === 'del') { comments = comments.filter((x) => x.id !== row.dataset.id); persist(); renderAll(); }
+            });
+            panel.querySelector('.cmt-file').addEventListener('change', (e) => {
+                const f = e.target.files[0]; if (!f) return;
+                f.text().then((txt) => { try { const arr = JSON.parse(txt); if (Array.isArray(arr)) { comments = arr; persist(); renderAll(); } } catch (err) { alert('Not a comments JSON file'); } });
+                e.target.value = '';
+            });
+            panel.querySelector('.cmt-list').addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                const row = e.target.closest('.cmt-row'); const h = e.target.closest('h4');
+                const i = row ? +row.dataset.slide : h ? +h.dataset.slide : -1;
+                if (i >= 0) document.getElementById('slidesScroller').scrollTo({ top: i * 1080, behavior: 'smooth' });
+            });
+
+            // --- pins ---
+            const clearPins = () => document.querySelectorAll('.cmt-pin').forEach((p) => p.remove());
+            const renderPins = () => {
+                clearPins();
+                if (!active) return;
+                const sl = slides();
+                comments.forEach((c, n) => {
+                    const s = sl[c.slide]; if (!s) return;
+                    const pin = document.createElement('div');
+                    pin.className = 'cmt-pin' + (c.resolved ? ' resolved' : '');
+                    pin.style.left = c.x + '%'; pin.style.top = c.y + '%';
+                    pin.textContent = n + 1; pin.title = c.text; pin.dataset.id = c.id;
+                    pin.addEventListener('click', (e) => { e.stopPropagation(); openEditor(c, e.clientX, e.clientY); });
+                    s.appendChild(pin);
+                });
+            };
+            const renderPanel = () => {
+                panel.querySelector('.cmt-count').textContent = comments.length ? `(${comments.filter((c) => !c.resolved).length} open / ${comments.length})` : '';
+                const list = panel.querySelector('.cmt-list'); list.innerHTML = '';
+                const by = new Map();
+                comments.forEach((c, n) => { if (!by.has(c.slide)) by.set(c.slide, []); by.get(c.slide).push([n, c]); });
+                Array.from(by.keys()).sort((a, b) => a - b).forEach((i) => {
+                    const h = document.createElement('h4'); h.dataset.slide = i; h.textContent = `Slide ${i + 1} · ${slideTitle(i)}`; list.appendChild(h);
+                    by.get(i).forEach(([n, c]) => {
+                        const row = document.createElement('div');
+                        row.className = 'cmt-row' + (c.resolved ? ' resolved' : ''); row.dataset.id = c.id; row.dataset.slide = i;
+                        row.innerHTML = `<span class="n">${n + 1}</span><div class="txt"></div><div class="meta"></div>
+                            <div class="act"><button data-act="resolve">${c.resolved ? 'Reopen' : 'Resolve'}</button><button data-act="del">Delete</button></div>`;
+                        row.querySelector('.txt').textContent = c.text;
+                        row.querySelector('.meta').textContent = `${c.author || 'anon'} · ${c.date}`;
+                        list.appendChild(row);
+                    });
+                });
+            };
+            const renderAll = () => { renderPins(); renderPanel(); };
+
+            // --- editor popup ---
+            let popup = null;
+            const closeEditor = () => { if (popup) { popup.remove(); popup = null; } };
+            const openEditor = (c, cx, cy) => {
+                closeEditor();
+                popup = document.createElement('div'); popup.className = 'cmt-popup';
+                popup.style.left = Math.min(cx + 12, window.innerWidth - 340) + 'px';
+                popup.style.top = Math.min(cy + 12, window.innerHeight - 180) + 'px';
+                popup.innerHTML = `<textarea placeholder="Comment for slide ${c.slide + 1}"></textarea>
+                    <div class="row"><button data-act="cancel">Cancel</button><button data-act="save" class="primary">Save</button></div>`;
+                const ta = popup.querySelector('textarea'); ta.value = c.text || '';
+                popup.addEventListener('click', (e) => {
+                    const b = e.target.closest('button'); if (!b) return;
+                    if (b.dataset.act === 'save') {
+                        const text = ta.value.trim();
+                        if (text) {
+                            c.text = text; c.author = authorInput.value.trim(); c.date = new Date().toISOString().slice(0, 10);
+                            if (!comments.includes(c)) comments.push(c);
+                            persist();
+                        }
+                        closeEditor(); renderAll();
+                    } else closeEditor();
+                });
+                ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) popup.querySelector('[data-act="save"]').click(); e.stopPropagation(); });
+                document.body.appendChild(popup); ta.focus();
+            };
+
+            // --- drop a pin: percentages of the slide's own rect, so pins survive any scale ---
+            document.addEventListener('click', (e) => {
+                if (!active) return;
+                if (e.target.closest('.cmt-panel, .cmt-popup, .cmt-pin')) return;
+                if (e.target.closest('a')) return;                 // links keep working in comment mode
+                const slide = e.target.closest('.slide'); if (!slide) return;
+                const r = slide.getBoundingClientRect();
+                if (!r.width || !r.height) return;                 // pre-layout gives NaN
+                const c = {
+                    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                    slide: slides().indexOf(slide),
+                    x: +(((e.clientX - r.left) / r.width) * 100).toFixed(2),
+                    y: +(((e.clientY - r.top) / r.height) * 100).toFixed(2),
+                    text: '', author: authorInput.value.trim(), date: new Date().toISOString().slice(0, 10), resolved: false
+                };
+                openEditor(c, e.clientX, e.clientY);
+            }, true);
+
+            // --- keys: C toggles; Escape closes the editor; never steal keys while typing ---
+            document.addEventListener('keydown', (e) => {
+                const el = document.activeElement;
+                if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+                    if (e.key === 'Escape') { closeEditor(); el.blur(); }
+                    return;
+                }
+                if (e.key === 'Escape' && popup) { closeEditor(); return; }
+                if (e.key === 'c' || e.key === 'C') {
+                    active = !active;
+                    document.body.classList.toggle('comment-mode', active);
+                    closeEditor(); renderAll();
+                }
+            });
+
+            // --- W-save hooks: bake the comments into the file, keep the DOM free of pins ---
+            window.slideComments = {
+                beforeSave() {
+                    clearPins(); closeEditor();
+                    document.body.classList.remove('comment-mode');
+                    let tag = document.getElementById('baked-comments');
+                    if (!tag) { tag = document.createElement('script'); tag.id = 'baked-comments'; tag.type = 'application/json'; document.body.appendChild(tag); }
+                    tag.textContent = JSON.stringify(comments);
+                },
+                afterSave() { if (active) { document.body.classList.add('comment-mode'); renderPins(); } },
+                get all() { return comments; }
+            };
+            renderPanel();
+        })();
+    </script>
+
+
+    <!-- Typewriter terminal animation (auto-detects id="typewriter-terminal") -->
+    <script>
+    (function() {
+        var scroller = document.getElementById('slidesScroller');
+        document.querySelectorAll('.slide').forEach(function(slide) {
+            var terminal = slide.querySelector('#typewriter-terminal');
+            if (!terminal) return;
+            var body = slide.querySelector('#auto-scroll-body');
+
+            // Read line data from pre-rendered HTML, then clear
+            var lineData = [];
+            terminal.querySelectorAll('.term-line').forEach(function(el) {
+                lineData.push({
+                    html: el.innerHTML,
+                    delay: parseInt(el.getAttribute('data-delay') || '0', 10)
+                });
+            });
+            terminal.innerHTML = '';
+            var timers = [];
+
+            function reset() {
+                timers.forEach(function(t) { clearTimeout(t); });
+                timers = [];
+                terminal.innerHTML = '';
+                terminal.style.marginTop = '0';
+            }
+
+            function play() {
+                reset();
+                lineData.forEach(function(item) {
+                    timers.push(setTimeout(function() {
+                        var span = document.createElement('span');
+                        span.style.display = 'block';
+                        span.innerHTML = item.html;
+                        terminal.appendChild(span);
+                        // Push up if content exceeds container
+                        if (body) {
+                            var available = body.clientHeight - 36;
+                            var excess = terminal.scrollHeight - available;
+                            if (excess > 0) {
+                                terminal.style.marginTop = '-' + excess + 'px';
+                            }
+                        }
+                    }, item.delay));
+                });
+            }
+
+            new IntersectionObserver(function(entries) {
+                entries.forEach(function(e) {
+                    if (e.isIntersecting) play();
+                    else reset();
+                });
+            }, { root: scroller, threshold: 0.5 }).observe(slide);
+        });
+    })();
+    </script>
+
+    <!-- CxR dynamic dimension annotation (HARNESS: hep-frontend-slides.md §idea16) -->
+    <script>
+    (function() {
+        // For each .mac-terminal whose title contains a shell identifier (-zsh, -bash),
+        // compute CxR from the actual rendered body dimensions and font metrics.
+        document.querySelectorAll('.mac-terminal').forEach(function(term) {
+            var titleEl = term.querySelector('.mac-terminal-title');
+            if (!titleEl) return;
+            var text = titleEl.textContent;
+            // Only apply to shell terminals (contain -zsh or -bash)
+            if (text.indexOf('-zsh') === -1 && text.indexOf('-bash') === -1) return;
+
+            var body = term.querySelector('.mac-terminal-body');
+            if (!body) return;
+
+            // Measure char width via probe
+            var probe = document.createElement('span');
+            probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font:inherit;';
+            probe.textContent = 'MMMMMMMMMM';  // 10 monospace chars
+            var codeEl = body.querySelector('.mac-terminal-code') || body;
+            codeEl.appendChild(probe);
+            var charW = probe.offsetWidth / 10;
+            var lineH = parseFloat(getComputedStyle(codeEl).lineHeight) || (parseFloat(getComputedStyle(codeEl).fontSize) * 1.65);
+            codeEl.removeChild(probe);
+
+            // Compute usable area (subtract padding)
+            var cs = getComputedStyle(body);
+            var padH = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+            var padV = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+            var usableW = body.clientWidth - padH;
+            var usableH = body.clientHeight - padV;
+
+            var cols = Math.floor(usableW / charW);
+            var rows = Math.floor(usableH / lineH);
+            var cxr = cols + 'x' + rows;
+
+            // Replace existing CxR or append
+            titleEl.textContent = text.replace(/\d+x\d+$/, cxr);
+        });
+    })();
+    </script>
+
+    <!-- Logo auto-sizing & border-radius (HARNESS: idea17) -->
+    <script>
+    (function() {
+        document.querySelectorAll('.logo-img').forEach(function(img) {
+            function applyRadius() {
+                // Explicit rule for CMS logo which is square but needs 4px
+                if (img.src.includes('CMS') || (img.alt && img.alt.includes('CMS'))) {
+                    img.style.borderRadius = '4px';
+                    return;
+                }
+                var ratio = img.naturalWidth / img.naturalHeight;
+                // If non-square (wide/tall), 50% makes an ugly ellipse, so use 4px
+                if (ratio < 0.9 || ratio > 1.1) {
+                    img.style.borderRadius = '4px';
+                } else {
+                    // Square images (university seals, CEPC) default to circular
+                    img.style.borderRadius = '50%';
+                }
+            }
+            if (img.complete && img.naturalWidth) applyRadius();
+            else img.onload = applyRadius;
+        });
+    })();
+    </script>
+
+    <!-- Transition title collision guard (HARNESS: idea18) -->
+    <script>
+    (function() {
+        document.querySelectorAll('.transition-slide').forEach(function(slide) {
+            var textEl = slide.querySelector('.transition-text');
+            if (!textEl) return;
+            textEl.style.boxSizing = 'border-box';
+            textEl.style.width = '100%';
+            var cs = window.getComputedStyle(textEl);
+            var pl = parseInt(cs.paddingLeft, 10) || 0;
+            if (pl < 180) {
+                textEl.style.paddingLeft = '180px';
+            }
+            var pr = parseInt(cs.paddingRight, 10) || 0;
+            if (pr < 180) {
+                textEl.style.paddingRight = '180px';
+            }
+        });
+    })();
+    </script>
+
+</body>
+</html>

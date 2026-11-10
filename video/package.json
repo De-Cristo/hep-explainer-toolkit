@@ -1,0 +1,10 @@
+{
+  "name": "hep-explainer-video",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Playwright step recorder for the HEP explainer video pipeline.",
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}

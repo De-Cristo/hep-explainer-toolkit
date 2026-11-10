@@ -1,0 +1,6 @@
+# Python 3.12. Weights are not pinned here; Kokoro downloads them at runtime.
+kokoro-onnx>=0.6.1
+soundfile>=0.12
+numpy>=1.26
+PyYAML>=6
+pytest>=8

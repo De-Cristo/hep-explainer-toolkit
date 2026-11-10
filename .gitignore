@@ -6,11 +6,15 @@
 # Manim writes frames, partial movies, and TeX caches here.
 media/
 
-# Model weights
+# Model weights. Kokoro downloads these at runtime; do not commit them.
 *.onnx
 *.pt
 *.safetensors
 *.pth
+voices-*.bin
+
+# Local renders from video/ (frames, wavs, timings). Sources stay tracked.
+video/**/build/
 
 # Node
 node_modules/
