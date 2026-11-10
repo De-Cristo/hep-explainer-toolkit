@@ -85,8 +85,8 @@ class ModelRulesTest(unittest.TestCase):
         self.assertNotEqual(canonical_token("qbar"), canonical_token("qbar'"))
         self.assertEqual(canonical_token("W*"), canonical_token("W"))
         self.assertEqual(canonical_token("gamma"), canonical_token("a"))
-        self.assertEqual(conjugate_token("W+"), "w-")
-        self.assertEqual(conjugate_token("W-"), "w+")
+        self.assertEqual(conjugate_token("W+"), "W-")
+        self.assertEqual(conjugate_token("W-"), "W+")
         self.assertEqual(conjugate_token("bbar"), "b")
         self.assertEqual(conjugate_token("H"), "h")
 
