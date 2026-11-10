@@ -71,26 +71,32 @@ def normalize_space(text: str) -> str:
 
 
 def normalize_tex(text: str) -> str:
-    """Drop presentation differences that do not change an equation."""
+    """Normalize cosmetic TeX differences without erasing grouping semantics."""
     value = text.strip()
     if value.startswith("$$") and value.endswith("$$"):
         value = value[2:-2]
     value = value.replace("$", "")
     value = value.replace(r"\dagger", "DAG").replace(r"\dag", "DAG")
-    value = re.sub(r"\\(?:text|mathrm|rm|operatorname)\b", "", value)
+    value = re.sub(
+        r"\\(?:text|mathrm|rm|operatorname)\s*\{([^{}]*)\}",
+        r"\1",
+        value,
+    )
     value = re.sub(r"\\(?:left|right|quad|qquad)\b", "", value)
     for spacing in (r"\,", r"\;", r"\!", r"\:", r"\ "):
         value = value.replace(spacing, "")
     value = value.replace("~", "")
     value = re.sub(r"\s+", "", value)
+
+    # Braces around a single superscript/subscript atom are cosmetic.
+    # Keep general grouping: {ab} and {a}{bc} can encode different maths.
+    atom = r"(?:[A-Za-z0-9]|DAG|\\[A-Za-z]+)"
     previous = None
     while previous != value:
         previous = value
-        value = re.sub(r"\^\{([^{}]+)\}", r"^\1", value)
-        value = re.sub(r"_\{([^{}]+)\}", r"_\1", value)
-    value = value.replace("{", "").replace("}", "")
+        value = re.sub(rf"\^\{{({atom})\}}", r"^\1", value)
+        value = re.sub(rf"_\{{({atom})\}}", r"_\1", value)
     return value
-
 
 def normalize_arxiv(value: str) -> str:
     text = value.strip()

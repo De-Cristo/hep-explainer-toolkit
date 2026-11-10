@@ -15,7 +15,7 @@ from pathlib import Path
 
 from checks.citations import normalize_tex
 from checks.diagrams import check_path
-from checks.ufo_model import canonical_token, load_model, required_arrow
+from checks.ufo_model import canonical_token, conjugate_token, load_model, required_arrow
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -85,6 +85,10 @@ class ModelRulesTest(unittest.TestCase):
         self.assertNotEqual(canonical_token("qbar"), canonical_token("qbar'"))
         self.assertEqual(canonical_token("W*"), canonical_token("W"))
         self.assertEqual(canonical_token("gamma"), canonical_token("a"))
+        self.assertEqual(conjugate_token("W+"), "W-")
+        self.assertEqual(conjugate_token("W-"), "W+")
+        self.assertEqual(conjugate_token("bbar"), "b")
+        self.assertEqual(conjugate_token("H"), "h")
 
     def test_dawson_equations_normalize_into_the_quote(self) -> None:
         potential_quote = (
@@ -98,6 +102,8 @@ class ModelRulesTest(unittest.TestCase):
         vev_quote = r"(\sqrt{2} G_F)^{-1/2} \simeq 246  \text{ GeV}"
         vev_tex = r"(\sqrt{2}G_F)^{-1/2}\simeq 246\,\text{GeV}"
         self.assertIn(normalize_tex(vev_tex), normalize_tex(vev_quote))
+        self.assertNotEqual(normalize_tex(r"\frac{ab}{c}"), normalize_tex(r"\frac{a}{bc}"))
+        self.assertNotEqual(normalize_tex(r"x^{ab}"), normalize_tex(r"x^a b"))
 
 
 class PlantedSceneTest(unittest.TestCase):
@@ -234,6 +240,122 @@ lines:
         self.assertTrue(arrows and arrows[0].status == "FAIL")
         self.assertIn("against_momentum", arrows[0].message)
         self.assertTrue(any(row.item == "vertex 1" and row.status == "PASS" for row in report.rows))
+
+    def test_directed_u_dbar_to_wplus_is_valid_after_crossing(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            _excerpt(folder, "excerpts/charged.yaml", '  - ["u", "dbar", "W+"]\n')
+            scene = _scene(
+                folder,
+                """
+title: charged current
+scenes:
+  - id: cc
+    narration: "An up quark and anti-down quark can produce a positively charged W boson."
+    visual:
+      kind: diagram
+      diagram: diagram.yaml
+    claims:
+      - id: words
+        kind: claim
+        text: "An up quark and anti-down quark can produce a positively charged W boson."
+        citation:
+          arxiv: "1610.07922"
+          locator: "Section 3"
+        excerpt: excerpts/charged.yaml
+      - id: graph
+        kind: diagram
+        citation:
+          arxiv: "1610.07922"
+          locator: "Section 3"
+        excerpt: excerpts/charged.yaml
+""",
+            )
+            _write(
+                folder,
+                "diagram.yaml",
+                """
+vertices:
+  - id: v
+    particles: ["u", "dbar", "W+"]
+lines:
+  - id: u
+    particle: u
+    source: u
+    target: v
+  - id: dbar
+    particle: dbar
+    source: dbar
+    target: v
+  - id: w
+    particle: W+
+    source: v
+    target: w
+""",
+            )
+            report = check_path(scene)
+        failed = [row for row in report.rows if row.status == "FAIL"]
+        self.assertFalse(failed, "; ".join(row.message for row in failed))
+
+    def test_wplus_to_wminus_h_fails_with_physical_directions(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            _excerpt(folder, "excerpts/charged.yaml", '  - ["W+", "W-", "H"]\n')
+            scene = _scene(
+                folder,
+                """
+title: impossible charge flow
+scenes:
+  - id: badcharge
+    narration: "This planted example has an impossible charged-boson decay."
+    visual:
+      kind: diagram
+      diagram: diagram.yaml
+    claims:
+      - id: words
+        kind: claim
+        text: "This planted example has an impossible charged-boson decay."
+        citation:
+          arxiv: "1610.07922"
+          locator: "Section 3"
+        excerpt: excerpts/charged.yaml
+      - id: graph
+        kind: diagram
+        citation:
+          arxiv: "1610.07922"
+          locator: "Section 3"
+        excerpt: excerpts/charged.yaml
+""",
+            )
+            _write(
+                folder,
+                "diagram.yaml",
+                """
+vertices:
+  - id: v
+    particles: ["W+", "W-", "H"]
+lines:
+  - id: win
+    particle: W+
+    source: win
+    target: v
+  - id: wout
+    particle: W-
+    source: v
+    target: wout
+  - id: h
+    particle: H
+    source: v
+    target: h
+""",
+            )
+            report = check_path(scene)
+        self.assertFalse(report.ok)
+        rows = [row for row in report.rows if row.item == "vertex 1"]
+        self.assertTrue(rows and rows[0].status == "FAIL")
+        self.assertIn("crossing outgoing physical lines", rows[0].message)
 
     def test_qqbar_instead_of_qqbar_prime_for_w_fails(self) -> None:
         import tempfile

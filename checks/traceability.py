@@ -161,9 +161,14 @@ def load_manifest(path: Path) -> Manifest:
     return Manifest(path, match, allows, sources, inputs, errors)
 
 
-def check(root: Path, manifest_path: Path) -> TraceReport:
+def check(
+    root: Path,
+    manifest_path: Path,
+    *,
+    inputs: list[tuple[Path, str]] | None = None,
+) -> TraceReport:
     manifest = load_manifest(manifest_path)
-    documents = _documents(root, manifest)
+    documents = _documents(root, manifest, inputs=inputs)
     exemptions: list[Exemption] = []
     matches: list[Match] = []
     failures: list[Unmatched] = []
@@ -322,9 +327,14 @@ def _locate(path: Path | None, manifest: Path | None) -> tuple[Path, Path]:
     return manifest, root
 
 
-def _documents(root: Path, manifest: Manifest) -> list:
+def _documents(
+    root: Path,
+    manifest: Manifest,
+    *,
+    inputs: list[tuple[Path, str]] | None = None,
+) -> list:
     documents = []
-    pairs = manifest.inputs
+    pairs = inputs if inputs is not None else manifest.inputs
     if pairs is None:
         pairs = discover(root)
     root_resolved = root.resolve()

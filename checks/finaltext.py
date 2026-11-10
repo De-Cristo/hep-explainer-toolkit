@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from checks.confidentiality import scan as scan_confidentiality
+from checks.documents import classify
 from checks.language import ok as language_ok
 from checks.language import scan as scan_language
 from checks.traceability import ManifestError, check as check_traceability
@@ -141,23 +142,43 @@ def _language(paths: list[Path]) -> list[str]:
 
 
 def _provenance(root: Path, paths: list[Path]) -> list[str]:
-    del paths
     report = scan_confidentiality(root)
-    if report.ok():
-        return []
-    return [
+    failures = [
         f"{item.rule_id} {item.path} {item.note or item.snippet}"
         for item in report.failures
     ]
+    root_resolved = root.resolve()
+    for path in paths:
+        resolved = path.resolve()
+        if resolved == root_resolved or root_resolved in resolved.parents:
+            continue
+        # External render inputs still need the confidentiality marker scan.
+        # Their provenance declaration belongs to their own project, so do
+        # not turn the lack of a local sources.yaml entry into a duplicate
+        # provenance failure here; exact number traceability runs separately.
+        external = scan_confidentiality(resolved)
+        failures.extend(
+            f"{item.rule_id} {item.path} {item.note or item.snippet}"
+            for item in external.failures
+            if item.channel != "provenance"
+        )
+    return failures
 
 
 def _traceability(root: Path, paths: list[Path]) -> list[str]:
-    del paths
+    inputs: list[tuple[Path, str]] = []
+    for path in paths:
+        kind = classify(path)
+        if kind is not None:
+            inputs.append((path, kind))
+    if not inputs:
+        # Scene claims/equations are checked by checks.diagrams instead.
+        return []
     manifest = _manifest(root)
     if manifest is None:
         return [f"no sources.yaml in {root}; number trace was not given the final text"]
     try:
-        report = check_traceability(root, manifest)
+        report = check_traceability(root, manifest, inputs=inputs)
     except ManifestError as exc:
         return [str(exc)]
     if report.ok:
@@ -165,29 +186,41 @@ def _traceability(root: Path, paths: list[Path]) -> list[str]:
     lines = list(report.source_errors)
     for item in report.failures:
         lines.append(f"{item.path}:{item.line} {item.value} {item.surface}")
+    lines.extend(
+        f"{item.path}:{item.line} {item.message} {item.surface}"
+        for item in report.wording
+    )
     return lines or ["number trace failed"]
 
 
 def _diagrams(root: Path, paths: list[Path]) -> list[str]:
-    del paths
-    scene = root / "scene.yaml"
-    if not scene.is_file():
-        return []
+    del root
     try:
         from checks.diagrams import SceneError, check_path
     except ImportError:
         return []
-    try:
-        report = check_path(scene)
-    except SceneError as exc:
-        return [str(exc)]
-    if report.ok:
-        return []
-    return [
-        f"{row.scene}/{row.item} {row.message}"
-        for row in report.rows
-        if row.status == "FAIL"
-    ]
+    problems: list[str] = []
+    for scene in paths:
+        if scene.suffix.lower() not in {".yaml", ".yml"}:
+            continue
+        try:
+            raw = scene.read_text(encoding="utf-8")
+        except OSError as exc:
+            problems.append(str(exc))
+            continue
+        if not re.search(r"(?m)^\s*scenes\s*:", raw):
+            continue
+        try:
+            report = check_path(scene)
+        except SceneError as exc:
+            problems.append(str(exc))
+            continue
+        problems.extend(
+            f"{row.scene}/{row.item} {row.message}"
+            for row in report.rows
+            if row.status == "FAIL"
+        )
+    return problems
 
 
 def _manifest(root: Path) -> Path | None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -56,6 +58,66 @@ class OrderTest(unittest.TestCase):
         with self.assertRaises(FinalTextError):
             assert_captions(narration, ["This sentence was the pre-rewrite draft."], seal)
 
+    def test_external_narration_is_traced_as_rendered(self) -> None:
+        with tempfile.TemporaryDirectory() as deck_tmp, tempfile.TemporaryDirectory() as narration_tmp:
+            deck = Path(deck_tmp)
+            slide = deck / "deck.html"
+            slide.write_text("<div class=\"slide\">Public toy deck.</div>\n", encoding="utf-8")
+            (deck / "sources.yaml").write_text(
+                textwrap.dedent(
+                    """
+                    files:
+                      - path: deck.html
+                        source:
+                          type: arxiv
+                          arxiv: "1808.08242"
+                    sources:
+                      - id: known_mass
+                        value: 125
+                        unit: GeV
+                        source:
+                          type: paper
+                          arxiv: "1808.08242"
+                    """
+                ),
+                encoding="utf-8",
+            )
+            narration = Path(narration_tmp) / "narration.yaml"
+            narration.write_text(
+                "steps:\n"
+                "  - slide: 1\n"
+                "    step: 0\n"
+                "    text: The planted value is 987654 GeV.\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(FinalTextError) as caught:
+                seal_for_render(slide, narration)
+        self.assertIn("987654", str(caught.exception))
+
+    def test_custom_named_scene_is_not_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            scene = folder / "custom-scene.yaml"
+            scene.write_text(
+                textwrap.dedent(
+                    """
+                    title: custom
+                    scenes:
+                      - id: bad
+                        narration: "A planted unsupported statement."
+                        visual:
+                          kind: slide
+                        claims:
+                          - id: words
+                            kind: claim
+                            text: "A planted unsupported statement."
+                    """
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaises(FinalTextError) as caught:
+                run_ordered_checks(folder, [scene])
+        self.assertIn("diagrams failed", str(caught.exception))
     def test_toy_deck_seals_the_files_that_render(self) -> None:
         narration = (TOY / "narration.yaml").resolve()
         slide = (TOY / "deck.html").resolve()

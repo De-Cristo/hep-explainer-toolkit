@@ -98,7 +98,7 @@ def classify(path: Path) -> str | None:
         return None
     suffix = path.suffix.lower()
     if _NARRATION_NAME.search(path.stem):
-        if suffix in {".txt", ".md", ".markdown", ".srt", ".vtt", ".html", ".htm"}:
+        if suffix in {".txt", ".md", ".markdown", ".srt", ".vtt", ".html", ".htm", ".yaml", ".yml"}:
             return "narration"
     if suffix in {".html", ".htm", ".pdf", ".md", ".markdown"}:
         return "slide"
@@ -113,6 +113,8 @@ def load_document(path: Path, kind: str) -> list[Document]:
     if suffix == ".pdf":
         text = extract_pdf_text(path.read_bytes())
         return [_plain(label, kind, text, hints_for_lines=True)]
+    if suffix in {".yaml", ".yml"} and kind == "narration":
+        return [_narration_yaml(label, raw)]
     if suffix in {".html", ".htm"}:
         return _from_html(label, raw, kind)
     if suffix in {".md", ".markdown"}:
@@ -120,6 +122,51 @@ def load_document(path: Path, kind: str) -> list[Document]:
     return [_plain(label, kind, raw, hints_for_lines=True)]
 
 
+def _narration_yaml(path: str, raw: str) -> Document:
+    """Extract only cue text from the narration YAML without a YAML dependency."""
+    pieces: list[str] = []
+    regions: list[Region] = []
+    cursor = 0
+    lines = raw.splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        match = re.match(r"^(\s*)text:\s*(.*)$", line)
+        if match is None:
+            index += 1
+            continue
+        indent = len(match.group(1))
+        rest = match.group(2).strip()
+        start_line = index + 1
+        if rest in {">", "|"}:
+            index += 1
+            block: list[str] = []
+            while index < len(lines):
+                candidate = lines[index]
+                if candidate.strip() == "":
+                    block.append("")
+                    index += 1
+                    continue
+                current_indent = len(candidate) - len(candidate.lstrip(" "))
+                if current_indent <= indent:
+                    break
+                block.append(candidate.strip())
+                index += 1
+            text = (" " if rest == ">" else "\n").join(block).strip()
+        else:
+            text = rest
+            if len(text) >= 2 and text[0] == text[-1] and text[0] in {"\"", "'"}:
+                text = text[1:-1]
+            index += 1
+        if not text:
+            continue
+        if pieces:
+            pieces.append("\n")
+            cursor += 1
+        pieces.append(text)
+        regions.append(Region(cursor, cursor + len(text), start_line, frozenset()))
+        cursor += len(text)
+    return Document(path, "narration", "".join(pieces), regions)
 def _plain(path: str, kind: str, text: str, *, hints_for_lines: bool) -> Document:
     regions: list[Region] = []
     cursor = 0

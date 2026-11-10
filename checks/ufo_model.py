@@ -473,6 +473,35 @@ def _product_choices(options: list[list[Choice]]):
             yield (choice, *rest)
 
 
+def conjugate_token(token: str, model: Model | None = None) -> str:
+    """Return the antiparticle label used when crossing an outgoing line.
+
+    UFO vertices use an all-incoming field convention. Diagram files use
+    physical momentum directions. A physical outgoing particle therefore
+    enters the UFO lookup as its conjugate state. Self-conjugate particles
+    and unresolved charge multiplets such as W are unchanged.
+    """
+    model = model or load_model()
+    parsed = model.parse(token)
+    if parsed.family is not None:
+        stem, primes, is_anti = split_token(token)
+        suffix = "'" * primes
+        raw = f"{stem}{suffix}" if is_anti else f"{stem}bar{suffix}"
+        return canonical_token(raw)
+    if len(parsed.options) != 1:
+        return parsed.canonical
+    choice = parsed.options[0]
+    if choice.self_conjugate:
+        return parsed.canonical
+    wanted = -choice.pdg
+    for candidate in model.by_name.values():
+        if candidate.pdg == wanted:
+            return candidate.name
+    flipped = _flipped(choice)
+    if flipped is None:
+        return parsed.canonical
+    return flipped.name
+
 def required_arrow(token: str, model: Model | None = None) -> str | None:
     """Fermion arrow demanded by the label, or None for a boson.
 
