@@ -256,11 +256,13 @@ class HandoffIntegrityTest(unittest.TestCase):
             folder = Path(tmp)
             handoff, _scene, _registry, _reviews, _template = _approved_handoff(folder)
             excerpt = folder / "two.yaml"
-            excerpt.write_text(
-                excerpt.read_text(encoding="utf-8")
-                .replace("stated scope.", "stated scope with an added qualification."),
-                encoding="utf-8",
+            original = excerpt.read_text(encoding="utf-8")
+            changed = original.replace(
+                "in the scaffold test.",
+                "in the scaffold test with an added qualification.",
             )
+            self.assertNotEqual(original, changed)
+            excerpt.write_text(changed, encoding="utf-8")
             with self.assertRaises(AuthoringError):
                 verify_handoff(handoff)
 
