@@ -1,0 +1,8 @@
+arxiv: "hep-ph/0503172"
+doi: "10.1016/j.physrep.2007.10.004"
+locator: "Sections 1 and 3"
+quote: "The process is q_1 qbar_2 to V-star to V H, followed here by the Higgs coupling to bottom quarks."
+vertices:
+  - ["q", "qbar", "Z"]
+  - ["Z", "Z", "H"]
+  - ["H", "b", "bbar"]
