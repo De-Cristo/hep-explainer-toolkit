@@ -166,6 +166,31 @@ python3 -m checks.review check PATH/claims.yaml PATH/reviews.json --strict
 
 The approval digest includes the claim, its evidence excerpt, and upstream dependency digests. If any of them changes, the approval becomes `stale`. Never regenerate or approve a review file automatically as part of a release build; approval is an explicit human action.
 
+## 1.56. Review scientific interpretation in the local UI
+
+For nontrivial claim sets, prefer the local review UI over editing `reviews.json` by hand:
+
+```bash
+python3 -m checks.review_ui PATH/claims.yaml \
+  --reviews PATH/reviews.json \
+  --scene PATH/scene.yaml \
+  --reviewer "Your Name"
+```
+
+The UI shows, per claim:
+- canonical scientific statement;
+- exact stored evidence excerpt and citation;
+- effective inherited assumptions;
+- caveats, dependencies, and structured context;
+- audience-specific wording from any supplied scene files;
+- current hash-bound review status.
+
+Approve or reject explicitly. A rejection is a first-class review decision and blocks downstream authoring/release just like a pending or stale review.
+
+The UI is intentionally dependency-free and has a strict privacy boundary. Private registries may only bind to loopback. Do not proxy the page, tunnel it, or bind it to `0.0.0.0`; the tool refuses that even if a remote override is requested. Public registries may bind remotely only with the explicit `--unsafe-remote` flag.
+
+The page makes no external requests, sets no-store and restrictive CSP headers, and uses a per-session CSRF token on every mutation. Review decisions reload the current registry and reviews before writing, and the review file is replaced atomically.
+
 ## 1.57. Keep private evidence private and bound method-validation claims
 
 A protected project may use a claim registry with:
