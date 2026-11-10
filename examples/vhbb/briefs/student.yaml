@@ -1,0 +1,28 @@
+topic: "How VH production becomes an H-to-bb analysis strategy"
+
+audience:
+  profile: physics_undergraduate
+  knows:
+    - particle_decay
+    - quarks
+    - leptons
+    - basic_probability
+  introduce:
+    - associated_production
+    - jets
+    - b_tagging
+    - lepton_categories
+
+purpose: explain_analysis_strategy
+medium: video
+duration_minutes: 4
+
+learning_goal: "Connect the VH production topology to reconstructed b-tagged jets and the zero-, one-, and two-lepton analysis categories."
+
+required_distinctions:
+  - "The accompanying W or Z is part of the production process; it is not a decay product of the Higgs."
+  - "A bottom quark and a reconstructed b-tagged jet are different objects."
+
+avoid:
+  - "Do not imply that b tagging identifies the originating quark with certainty."
+  - "Do not present a schematic diagram as a detector event display."
