@@ -70,6 +70,9 @@ class Source:
     uncertainty_up: Decimal | None
     uncertainty_down: Decimal | None
     origin: str
+    process: str | None = None
+    component: str | None = None
+    quantity: str | None = None
 
 
 @dataclass
@@ -115,16 +118,26 @@ class Unmatched:
 
 
 @dataclass
+class Wording:
+    path: str
+    line: int
+    kind: str
+    surface: str
+    message: str
+
+
+@dataclass
 class TraceReport:
     manifest: str
     failures: list[Unmatched]
     source_errors: list[str]
     exemptions: list[Exemption]
     matches: list[Match]
+    wording: list[Wording] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
-        return not self.failures and not self.source_errors
+        return not self.failures and not self.source_errors and not self.wording
 
 
 def load_manifest(path: Path) -> Manifest:
@@ -154,8 +167,14 @@ def check(root: Path, manifest_path: Path) -> TraceReport:
     exemptions: list[Exemption] = []
     matches: list[Match] = []
     failures: list[Unmatched] = []
+    wording: list[Wording] = []
     for document in documents:
         for hit in extract_numbers(document):
+            issue = _quantity_wording(hit)
+            if issue is not None:
+                wording.append(
+                    Wording(hit.path, hit.line, hit.kind, " ".join(hit.surface.split()), issue)
+                )
             rule_id = _exemption(hit, document.text, manifest.allows)
             if rule_id is not None:
                 exemptions.append(
@@ -200,6 +219,7 @@ def check(root: Path, manifest_path: Path) -> TraceReport:
         source_errors=list(manifest.source_errors),
         exemptions=exemptions,
         matches=matches,
+        wording=wording,
     )
 
 
@@ -214,6 +234,11 @@ def format_report(report: TraceReport, *, verbose: bool = False) -> str:
         )
     for error in report.source_errors:
         lines.append(f"  FAIL source {error}")
+    for item in report.wording:
+        lines.append(
+            f"  FAIL wording {item.kind:9} {item.path}:{item.line} "
+            f"{item.message} surface={item.surface!r}"
+        )
     for item in report.exemptions:
         lines.append(
             f"  exempt {item.rule_id:16} {item.kind:9} {item.path}:{item.line} "
@@ -226,7 +251,8 @@ def format_report(report: TraceReport, *, verbose: bool = False) -> str:
                 f"-> {item.source_id} ({item.origin})"
             )
     lines.append(
-        f"  {len(report.failures)} unmatched, {len(report.source_errors)} source error(s), "
+        f"  {len(report.failures)} unmatched, {len(report.wording)} wording, "
+        f"{len(report.source_errors)} source error(s), "
         f"{len(report.exemptions)} exemption(s), {len(report.matches)} matched"
     )
     return "\n".join(lines)
@@ -238,6 +264,7 @@ def report_to_json(report: TraceReport) -> dict[str, object]:
         "ok": report.ok,
         "unmatched": [item.__dict__ for item in report.failures],
         "source_errors": report.source_errors,
+        "wording": [item.__dict__ for item in report.wording],
         "exemptions": [item.__dict__ for item in report.exemptions],
         "matches": [item.__dict__ for item in report.matches],
     }
@@ -415,6 +442,13 @@ def _source(entry: object, directory: Path, match: MatchRule) -> tuple[Source | 
     origin_map = entry.get("source")
     if not isinstance(origin_map, dict) or "type" not in origin_map:
         raise ManifestError(f"source {source_id} needs source.type")
+    process = str(entry["process"]).upper() if entry.get("process") else None
+    component = str(entry["kind"]).lower() if entry.get("kind") else None
+    if component is not None and component not in {"central", "stat", "syst", "total"}:
+        raise ManifestError(
+            f"source {source_id} kind must be central, stat, syst, or total"
+        )
+    quantity = str(entry["quantity"]).lower() if entry.get("quantity") else None
     origin, error = _origin(source_id, origin_map, directory, value, quantum, uncertainty, match)
     source = Source(
         id=source_id,
@@ -426,6 +460,9 @@ def _source(entry: object, directory: Path, match: MatchRule) -> tuple[Source | 
         uncertainty_up=uncertainty_up,
         uncertainty_down=uncertainty_down,
         origin=origin,
+        process=process,
+        component=component,
+        quantity=quantity,
     )
     return source, error
 
@@ -675,7 +712,47 @@ def _rank(hit: NumberHit, source: Source) -> int:
     return 0
 
 
+_XSEC_UNITS = {"fb", "pb", "nb", "ub", "mb"}
+
+
+def _quantity_wording(hit: NumberHit) -> str | None:
+    """Signal strength must not be called a cross section or given a unit.
+
+    Other wording mistakes (the wrong channel name, observed versus
+    expected, a synonym we do not list) are not detected.
+    """
+    if not hit.calls_signal:
+        return None
+    if hit.calls_cross_section and hit.unit in _XSEC_UNITS:
+        return "signal strength called a cross section and given a cross-section unit"
+    if hit.calls_cross_section:
+        return "signal strength called a cross section"
+    if hit.unit in _XSEC_UNITS:
+        return "signal strength given a cross-section unit"
+    return None
+
+
+def _context_ok(hit: NumberHit, source: Source) -> bool:
+    if source.process and hit.process and source.process.upper() != hit.process.upper():
+        return False
+    if hit.component and source.component and hit.component != source.component:
+        return False
+    if hit.component and source.component is None:
+        return False
+    if source.component in {"stat", "syst", "total"} and hit.component != source.component:
+        return False
+    if source.component == "central" and hit.component not in {None, "central"}:
+        return False
+    if source.quantity in {"mu", "signal_strength"} and hit.unit:
+        return False
+    if hit.quantity and source.quantity and hit.quantity != source.quantity:
+        return False
+    return True
+
+
 def _source_matches(hit: NumberHit, source: Source, match: MatchRule) -> bool:
+    if not _context_ok(hit, source):
+        return False
     converted = _into_shown(source.value, source.unit, hit.unit)
     if converted is None or not _close(hit.value, converted, hit.quantum, match):
         return False
@@ -726,6 +803,12 @@ def _close(shown: Decimal, candidate: Decimal, quantum: Decimal, match: MatchRul
 def _nearest(hit: NumberHit, sources: list[Source]) -> str:
     best: tuple[Decimal, str] | None = None
     for source in sources:
+        if source.process and hit.process and source.process.upper() != hit.process.upper():
+            continue
+        if source.component and hit.component and source.component != hit.component:
+            continue
+        if hit.component in {"stat", "syst", "total"} and source.component != hit.component:
+            continue
         if _rank(hit, source) >= 99:
             continue
         converted = _into_shown(source.value, source.unit, hit.unit)

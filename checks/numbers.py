@@ -76,6 +76,16 @@ _NUM = re.compile(
     """
 )
 _PM = re.compile(r"(?i)\s*(?:±|\+/-|\+-|plus[\s-]or[\s-]minus)\s*")
+_LABELLED_PIECE = re.compile(
+    r"""(?ix)
+    \s*(?:±|\+/-|\+-)
+    \s*(?P<num>\d+(?:\.\d+)?)
+    (?:\s*\(\s*(?P<label>stat|syst|statistical|systematic|total)\s*\))?
+    """
+)
+_PROCESS = re.compile(r"\b(WH|ZH|ttH|tH|ggH|VBF|VH|bbH)\b", re.IGNORECASE)
+_CROSS_SECTION = re.compile(r"cross[\s-]+section", re.IGNORECASE)
+_SIGNAL = re.compile(r"\bmu\b|μ|signal[\s-]+strength", re.IGNORECASE)
 _ASYM = re.compile(
     r"""(?x)
     \s*\+\s*
@@ -194,6 +204,14 @@ class NumberHit:
     line: int
     kind: str
     hints: frozenset[str]
+    # Context for the claim, filled from nearby words. ``component`` is
+    # central / stat / syst / total. ``kind`` stays the document role
+    # (slide or narration).
+    process: str | None = None
+    component: str | None = None
+    quantity: str | None = None
+    calls_signal: bool = False
+    calls_cross_section: bool = False
 
 
 def extract_numbers(document: Document) -> list[NumberHit]:
@@ -205,35 +223,132 @@ def extract_numbers(document: Document) -> list[NumberHit]:
         if not _boundary(text, index):
             index += 1
             continue
+        bundle = _try_labelled_bundle(text, index)
+        if bundle is not None:
+            pieces, end = bundle
+            for start, parsed in pieces:
+                hits.append(_hit_from(document, text, start, parsed))
+            index = end
+            continue
         parsed = _try_version(text, index) or _try_value(text, index)
         if parsed is None:
             index += 1
             continue
-        hints, line = _locate(document, index)
-        # Regions were built on the original text. Normalization above does
-        # not change length (nbsp and the minus sign are one-for-one).
-        hits.append(
-            NumberHit(
-                value=parsed.value,
-                quantum=parsed.quantum,
-                unit=parsed.unit,
-                uncertainty=parsed.uncertainty,
-                uncertainty_quantum=parsed.uncertainty_quantum,
-                uncertainty_up=parsed.uncertainty_up,
-                uncertainty_down=parsed.uncertainty_down,
-                uncertainty_up_quantum=parsed.uncertainty_up_quantum,
-                uncertainty_down_quantum=parsed.uncertainty_down_quantum,
-                start=index,
-                end=parsed.end,
-                surface=text[index : parsed.end],
-                path=document.path,
-                line=line,
-                kind=document.kind,
-                hints=frozenset(set(hints) | set(parsed.hints)),
+        hits.append(_hit_from(document, text, index, parsed))
+        index = parsed.end
+    _annotate_context(text, hits)
+    return hits
+
+
+def _hit_from(document: Document, text: str, start: int, parsed: _Parsed) -> NumberHit:
+    hints, line = _locate(document, start)
+    return NumberHit(
+        value=parsed.value,
+        quantum=parsed.quantum,
+        unit=parsed.unit,
+        uncertainty=parsed.uncertainty,
+        uncertainty_quantum=parsed.uncertainty_quantum,
+        uncertainty_up=parsed.uncertainty_up,
+        uncertainty_down=parsed.uncertainty_down,
+        uncertainty_up_quantum=parsed.uncertainty_up_quantum,
+        uncertainty_down_quantum=parsed.uncertainty_down_quantum,
+        start=start,
+        end=parsed.end,
+        surface=text[start : parsed.end],
+        path=document.path,
+        line=line,
+        kind=document.kind,
+        hints=frozenset(set(hints) | set(parsed.hints)),
+        component=parsed.component,
+    )
+
+
+def _try_labelled_bundle(
+    text: str, index: int
+) -> tuple[list[tuple[int, _Parsed]], int] | None:
+    """Split ``1.31 ± 0.24 (stat) ± 0.26 (syst)`` into one hit per piece.
+
+    A plain ``±`` with no stat/syst/total label stays with the generic
+    parser so an unlabelled symmetric uncertainty is still one claim.
+    """
+    match = _NUM.match(text, index)
+    if match is None or match.group("exp") or match.group("sign") in {"-", "−"}:
+        return None
+    if match.end() < len(text) and text[match.end()].isalpha():
+        return None
+    pieces: list[re.Match[str]] = []
+    cursor = match.end()
+    while True:
+        piece = _LABELLED_PIECE.match(text, cursor)
+        if piece is None:
+            break
+        pieces.append(piece)
+        cursor = piece.end()
+    if not pieces or not any(piece.group("label") for piece in pieces):
+        return None
+    sign = match.group("sign") or ""
+    value, quantum = _compose(sign, match.group("body"), match.group("frac"), None)
+    built: list[tuple[int, _Parsed]] = [
+        (
+            index,
+            _Parsed(value=value, quantum=quantum, end=match.end(), component="central"),
+        )
+    ]
+    for piece in pieces:
+        label = piece.group("label")
+        component = _component_name(label) if label else None
+        number = piece.group("num")
+        if "." in number:
+            whole, frac = number.split(".", 1)
+            piece_value, piece_quantum = _compose("", whole, frac, None)
+        else:
+            piece_value, piece_quantum = _compose("", number, None, None)
+        number_start = piece.start("num")
+        built.append(
+            (
+                number_start,
+                _Parsed(
+                    value=piece_value,
+                    quantum=piece_quantum,
+                    end=piece.end("num"),
+                    component=component,
+                ),
             )
         )
-        index = parsed.end
-    return hits
+    return built, cursor
+
+
+def _component_name(label: str) -> str:
+    lowered = label.lower()
+    if lowered.startswith("stat"):
+        return "stat"
+    if lowered.startswith("syst"):
+        return "syst"
+    return "total"
+
+
+def _annotate_context(text: str, hits: list[NumberHit]) -> None:
+    for hit in hits:
+        before = text[max(0, hit.start - 80) : hit.start]
+        processes = list(_PROCESS.finditer(before))
+        if processes:
+            hit.process = processes[-1].group(1).upper()
+        sentence = _sentence_around(text, hit.start)
+        hit.calls_cross_section = _CROSS_SECTION.search(sentence) is not None
+        hit.calls_signal = _SIGNAL.search(sentence) is not None
+        if hit.calls_cross_section:
+            hit.quantity = "cross_section"
+        elif hit.calls_signal:
+            hit.quantity = "mu"
+
+
+def _sentence_around(text: str, index: int) -> str:
+    start = max(text.rfind("\n", 0, index), text.rfind(".", 0, index))
+    end_break = text.find("\n", index)
+    end_stop = text.find(".", index)
+    candidates = [pos for pos in (end_break, end_stop) if pos != -1]
+    end = min(candidates) if candidates else len(text)
+    return text[start + 1 : end]
 
 
 @dataclass
@@ -241,6 +356,7 @@ class _Parsed:
     value: Decimal
     quantum: Decimal
     end: int
+    component: str | None = None
     unit: str | None = None
     uncertainty: Decimal | None = None
     uncertainty_quantum: Decimal | None = None

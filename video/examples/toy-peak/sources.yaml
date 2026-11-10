@@ -1,0 +1,13 @@
+# Toy-peak deck for the video pipeline. Not a CMS result.
+# examples/toy/emit.py regenerates these files; the hashes must match.
+files:
+  - path: deck.html
+    source:
+      type: toy
+      generator: examples/toy/emit.py
+      sha256: 86398d6a23390c8d81315f32491cd6ce674082e1ab025ecd9df8c719f15c387c
+  - path: narration.yaml
+    source:
+      type: toy
+      generator: examples/toy/emit.py
+      sha256: 10845e2db871bbe6842c2fa7dacf883fc57f0c32221e75c575290681c3100d3b

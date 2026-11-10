@@ -194,6 +194,111 @@ class NumberParserTest(unittest.TestCase):
         self.assertTrue(any(hit.value == Decimal("1.2") for hit in hits))
 
 
+# Public CMS VH(bb) signal strengths, as used by the traceability tests:
+# WH mu = 1.31 ± 0.24 (stat) ± 0.26 (syst), ZH mu = 1.07 ± 0.17 (stat) ± 0.17 (syst).
+_VH_MANIFEST = """
+sources:
+  - id: wh_mu
+    quantity: mu
+    process: WH
+    kind: central
+    value: 1.31
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: wh_mu_stat
+    quantity: mu
+    process: WH
+    kind: stat
+    value: 0.24
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: wh_mu_syst
+    quantity: mu
+    process: WH
+    kind: syst
+    value: 0.26
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: zh_mu
+    quantity: mu
+    process: ZH
+    kind: central
+    value: 1.07
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: zh_mu_stat
+    quantity: mu
+    process: ZH
+    kind: stat
+    value: 0.17
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: zh_mu_syst
+    quantity: mu
+    process: ZH
+    kind: syst
+    value: 0.17
+    source:
+      type: paper
+      arxiv: "1808.08242"
+"""
+
+
+class ContextBindingTest(unittest.TestCase):
+    def test_public_vh_values_match_when_the_words_agree(self) -> None:
+        report = _vh(
+            "Public CMS VH(bb) signal strengths. "
+            "The WH mu is 1.31 ± 0.24 (stat) ± 0.26 (syst). "
+            "The ZH mu is 1.07 ± 0.17 (stat) ± 0.17 (syst)."
+        )
+        self.assertEqual(report.failures, [], _failures(report))
+        self.assertEqual(report.wording, [])
+        ids = {item.source_id for item in report.matches}
+        self.assertEqual(
+            ids,
+            {"wh_mu", "wh_mu_stat", "wh_mu_syst", "zh_mu", "zh_mu_stat", "zh_mu_syst"},
+        )
+
+    def test_wrong_wh_central_value(self) -> None:
+        report = _vh("The WH mu is 1.13.")
+        self.assertTrue(report.failures)
+        self.assertTrue(any("1.13" in item.value for item in report.failures))
+        self.assertTrue(any("wh_mu" in item.nearest for item in report.failures))
+
+    def test_stat_and_syst_swapped(self) -> None:
+        report = _vh("The WH mu is 1.31 ± 0.26 (stat) ± 0.24 (syst).")
+        swapped = {item.value for item in report.failures}
+        self.assertIn("0.26", swapped)
+        self.assertIn("0.24", swapped)
+        self.assertFalse(any(item.source_id == "wh_mu_stat" for item in report.matches))
+        self.assertFalse(any(item.source_id == "wh_mu_syst" for item in report.matches))
+
+    def test_zh_value_attributed_to_wh(self) -> None:
+        report = _vh("The WH mu is 1.07.")
+        self.assertTrue(any(item.value.startswith("1.07") for item in report.failures))
+        self.assertFalse(any(item.source_id == "zh_mu" for item in report.matches))
+
+    def test_mu_called_a_cross_section(self) -> None:
+        report = _vh("The WH mu cross section is 1.31 pb.")
+        self.assertTrue(report.wording)
+        self.assertTrue(any("cross section" in item.message for item in report.wording))
+        self.assertFalse(any(item.source_id == "wh_mu" for item in report.matches))
+
+
+def _vh(narration: str):
+    folder = _deck(
+        slide="Public CMS VH(bb) numbers are in the narration.",
+        narration=narration,
+        manifest=_VH_MANIFEST,
+    )
+    return check(folder, folder / "sources.yaml")
+
+
 def _hits(text: str) -> list:
     document = Document("toy.txt", "narration", text, [Region(0, len(text), 1)])
     return extract_numbers(document)

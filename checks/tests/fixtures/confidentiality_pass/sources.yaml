@@ -1,0 +1,14 @@
+# Fixture ids only. Not a real paper or record.
+files:
+  - path: talk.html
+    source:
+      type: arxiv
+      arxiv: "0000.00000"
+  - path: narration.txt
+    source:
+      type: arxiv
+      arxiv: "0000.00000"
+  - path: public.pdf
+    source:
+      type: cds
+      url: "https://cds.cern.ch/record/1"
