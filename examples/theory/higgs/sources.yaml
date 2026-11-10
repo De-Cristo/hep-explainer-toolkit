@@ -11,3 +11,12 @@ files:
     source:
       type: arxiv
       arxiv: "0901.0241"
+
+sources:
+  - id: higgs_vev
+    quantity: scale
+    value: 246
+    unit: GeV
+    source:
+      type: paper
+      arxiv: "0901.0241"
