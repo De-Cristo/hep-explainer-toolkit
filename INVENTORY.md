@@ -24,6 +24,9 @@ Initial upstream survey: 2026-11-09. The repository now contains working HEP-spe
 | Privacy-aware local evidence | implemented + tested | `visibility: private`, local evidence bound to review digest |
 | Bounded method-validation semantics | implemented + tested | storyboard `method_validation` block |
 | Integrated scientific review/release packet | implemented + tested | `python -m checks.release ...` |
+| Source-bound candidate authoring packs | implemented + tested | `python -m checks.authoring init/index/check` |
+| Explicit candidate-to-claim promotion | implemented + tested | one-candidate `checks.authoring promote`, interpretation reset to pending |
+| Approval-gated authoring handoff | implemented + tested | `checks.authoring handoff` JSON for downstream slide/video authoring |
 | Multi-audience end-to-end benchmark | implemented + tested | `examples/vhbb/` public, student, and specialist variants |
 | Synthetic scene render in CI | implemented + tested | `video/tests/test_explain_integration.py` |
 | Publication packages for Indico/CDS/YouTube | planned | not yet implemented |
