@@ -1,0 +1,14 @@
+# Confidentiality gate. From the repository root:
+#   pip install pre-commit
+#   pre-commit install
+# pre-commit is a developer tool. The check itself uses the Python 3.12
+# standard library only.
+repos:
+  - repo: local
+    hooks:
+      - id: confidentiality-gate
+        name: confidentiality gate
+        entry: python3 -m checks.confidentiality scan .
+        language: system
+        pass_filenames: false
+        always_run: true

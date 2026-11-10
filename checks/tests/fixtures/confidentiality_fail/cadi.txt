@@ -1,0 +1,2 @@
+TOY fixture. Not a real analysis.
+Unpublished toy code HIG-00-000 is not cleared by arXiv:0000.00000.
