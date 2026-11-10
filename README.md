@@ -12,6 +12,8 @@ Renderers now declare an explicit render job: every slide, narration file, scene
 
 Reusable scientific content can live in a project-local `claims.yaml`. Scenes reference stable claim IDs while keeping audience-specific wording local; `python3 -m checks.claims check CLAIMS.yaml --report build/claim-review.md` produces a review surface with separate source, evidence, value, and interpretation states.
 
+Audience-specific scene files can also link to a validated brief and declare a reasoning sequence. `python3 -m checks.storyboard check SCENE.yaml --report build/storyboard-review.md` checks prerequisites, introduced concepts, required distinctions, claim references, and semantic visual cues. For theory diagrams, segmented narration cues now drive progressive line reveals in the narrated video.
+
 Development assistance and attribution are recorded in [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 > **This repository is public.** Never commit internal or unapproved CMS material. That includes plots, numbers, slides, and videos. The only figures, values, decks, and clips that may be added are approved public results, or toy and simulated examples. If a file is not clearly public, leave it out.
