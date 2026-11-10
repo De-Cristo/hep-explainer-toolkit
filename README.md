@@ -6,6 +6,8 @@ How an agent should choose a figure, a diagram, an animation, slides, or a narra
 
 Turn public high-energy physics results into professional slides, animations, short clear narrated explainer videos, and publication-ready exports. The pieces are upstream tools linked as git submodules. This repository is the HEP-specific layer on top of them: what to run, in which order, and which physics rules the output has to satisfy.
 
+For a new explanation, start with an audience/learning-goal brief before writing slides or narration. `python3 -m checks.brief check BRIEF.yaml` validates that the audience, prerequisites, concepts to introduce, purpose, medium, and learning goal are explicit. See `examples/briefs/vhbb-undergraduate.yaml` and [AGENTS.md](AGENTS.md).
+
 > **This repository is public.** Never commit internal or unapproved CMS material. That includes plots, numbers, slides, and videos. The only figures, values, decks, and clips that may be added are approved public results, or toy and simulated examples. If a file is not clearly public, leave it out.
 
 The project's own licence has not been chosen yet. There is no `LICENSE` file in this repository until the owner picks one. Each upstream project keeps the licence noted below; those licences do not licence this repository.

@@ -4,6 +4,39 @@ This repository is public. Use public sources only: arXiv, a DOI, or a textbook 
 
 Plots and slides are optional. A theory explanation does not need a CMS plot.
 
+## 0. Write the authoring brief first
+
+For a new explanation, do not begin with narration or slide layout. First write a brief that makes the pedagogical choices explicit: the audience, what they already know, what must be introduced, the communication purpose, the medium, the learning goal, and scientific distinctions that must survive simplification.
+
+Validate it before authoring:
+
+```bash
+python3 -m checks.brief check examples/briefs/vhbb-undergraduate.yaml
+```
+
+A minimal brief looks like:
+
+```yaml
+topic: "Why use associated production to study H to bb?"
+audience:
+  profile: physics_undergraduate
+  knows:
+    - particle_decay
+  introduce:
+    - jets
+    - flavour_tagging
+purpose: explain_analysis_strategy
+medium: slides
+duration_minutes: 5
+learning_goal: "Explain how accompanying particles help identify a Higgs candidate."
+required_distinctions:
+  - "A bottom quark and a reconstructed b-tagged jet are different objects."
+```
+
+The audience profile is descriptive, not a fixed enum. A public explanation, a student explanation, and an analysis-approval talk should normally start from different questions and use different prerequisite chains. Do not create an audience variant by merely replacing technical words with simpler words. Rebuild the reasoning path from the brief.
+
+The brief is an authoring input, not rendered scientific evidence. Claims, equations, numbers, diagrams, citations, provenance, and confidentiality still use the checks below.
+
 ## 1. Pick the output
 
 Read the request and pick the smallest thing that answers it.

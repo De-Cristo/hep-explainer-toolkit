@@ -1,0 +1,26 @@
+topic: "Why use associated production to study H to bb?"
+
+audience:
+  profile: physics_undergraduate
+  knows:
+    - particle_decay
+    - basic_probability
+  introduce:
+    - jets
+    - flavour_tagging
+    - associated_production
+
+purpose: explain_analysis_strategy
+medium: slides
+duration_minutes: 5
+
+learning_goal: "Explain how accompanying particles help identify a Higgs candidate."
+
+required_distinctions:
+  - "A bottom quark and a reconstructed b-tagged jet are different objects."
+  - "An illustrative event is not evidence for a measured signal."
+  - "Associated production helps with event identification; it does not increase the Higgs branching fraction."
+
+avoid:
+  - "Do not imply that a b-tagged jet uniquely identifies a bottom quark."
+  - "Do not quote a sensitivity or signal strength unless it is sourced."
