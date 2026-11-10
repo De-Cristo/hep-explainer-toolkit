@@ -74,6 +74,17 @@ class RenderJob:
         return tuple(unique)
 
 
+def find_project_root(start: Path) -> Path:
+    """Return the nearest ancestor carrying sources.yaml, else the directory."""
+    current = Path(start).resolve()
+    if current.is_file():
+        current = current.parent
+    for directory in (current, *current.parents):
+        if any((directory / name).is_file() for name in ("sources.yaml", "sources.yml")):
+            return directory
+    return current
+
+
 def make_render_job(
     root: Path,
     inputs: list[RenderInput],
