@@ -127,6 +127,49 @@ python3 -m checks.review check PATH/claims.yaml PATH/reviews.json --strict
 
 The approval digest includes the claim, its evidence excerpt, and upstream dependency digests. If any of them changes, the approval becomes `stale`. Never regenerate or approve a review file automatically as part of a release build; approval is an explicit human action.
 
+## 1.57. Keep private evidence private and bound method-validation claims
+
+A protected project may use a claim registry with:
+
+```yaml
+visibility: private
+claims:
+  - id: method.definition
+    kind: definition
+    citation:
+      local: ../main.tex
+      locator: "Section 3.1"
+    excerpt: excerpt.yaml
+```
+
+The excerpt file must use a matching `local:` path that resolves to the same source, and its quote must occur in that local source. A public registry is forbidden from using `citation.local`. The local source bytes are included in the interpretation-review digest, so changing the private source makes approvals stale.
+
+Do not copy protected evidence into this public toolkit. Run the toolkit against the protected project, and keep its claim registry, excerpts, review file, packets, figures, and analysis-specific numbers inside that protected repository.
+
+For a method-validation scene, state the scientific boundary explicitly:
+
+```yaml
+method_validation:
+  test: validation.test
+  demonstrates:
+    - validation.supported_conclusion
+  does_not_establish:
+    - validation.broader_unproven_conclusion
+```
+
+Every entry is a registered claim. Both `demonstrates` and `does_not_establish` are required. This prevents a successful technical validation from silently becoming a broader physics claim.
+
+Build the integrated human-review packet with:
+
+```bash
+python3 -m checks.release PATH/scene.yaml \
+  --reviews PATH/reviews.json \
+  --out build/review.html \
+  --strict
+```
+
+For a public release candidate, add `--public`. That mode refuses `visibility: private` and also runs the renderer-equivalent public validation. A private packet can be **human-review ready**; only public mode can report **public-release ready**.
+
 ## 1.6. Make the reasoning path and visual timing explicit
 
 For an audience-specific explanation, connect the scene file to its brief with `brief:`. Each scene records the question it answers, the idea to retain, prerequisites, concepts introduced, the purpose of the visual, and why the next scene follows. Validate that chain before rendering:

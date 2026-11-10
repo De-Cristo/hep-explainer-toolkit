@@ -29,6 +29,12 @@ def claim_digest(registry: ClaimRegistry, claim_id: str) -> str:
         if current in cache:
             return cache[current]
         claim = registry.get(current)
+        local_source_sha256 = None
+        if claim.citation.get("local"):
+            local_source = (
+                registry.path.parent / str(claim.citation["local"])
+            ).resolve()
+            local_source_sha256 = _sha256(local_source)
         payload = {
             "id": claim.id,
             "kind": claim.kind,
@@ -36,6 +42,7 @@ def claim_digest(registry: ClaimRegistry, claim_id: str) -> str:
             "origin": claim.origin,
             "citation": claim.citation,
             "excerpt_sha256": _sha256(claim.excerpt),
+            "local_source_sha256": local_source_sha256,
             "tex": claim.tex,
             "value": claim.value,
             "unit": claim.unit,

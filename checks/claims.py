@@ -84,6 +84,7 @@ class ClaimRegistry:
     path: Path
     claims: dict[str, Claim]
     comparisons: tuple[Comparison, ...] = ()
+    visibility: str = "public"
 
     def effective_assumptions(self, claim_id: str) -> tuple[str, ...]:
         """Return explicit and upstream assumptions without duplication."""
@@ -125,13 +126,18 @@ def load_registry(path: Path) -> ClaimRegistry:
         raise ClaimRegistryError(f"cannot read {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ClaimRegistryError(f"{path} must be a mapping")
+    visibility = str(data.get("visibility") or "public").strip()
+    if visibility not in {"public", "private"}:
+        raise ClaimRegistryError(
+            f"{path}: visibility must be public or private"
+        )
     raw_claims = data.get("claims")
     if not isinstance(raw_claims, list) or not raw_claims:
         raise ClaimRegistryError(f"{path}: claims must be a non-empty list")
 
     claims: dict[str, Claim] = {}
     for index, raw in enumerate(raw_claims, 1):
-        claim = _claim(path, raw, index)
+        claim = _claim(path, raw, index, visibility)
         if claim.id in claims:
             raise ClaimRegistryError(f"{path}: duplicate claim id {claim.id}")
         claims[claim.id] = claim
@@ -144,12 +150,19 @@ def load_registry(path: Path) -> ClaimRegistry:
         for index, raw in enumerate(raw_comparisons, 1)
     )
     _validate_dependencies(path, claims)
-    return ClaimRegistry(path, claims, comparisons)
+    return ClaimRegistry(path, claims, comparisons, visibility)
 
 
 def registry_dependencies(path: Path) -> tuple[Path, ...]:
     registry = load_registry(path)
-    return (registry.path, *(claim.excerpt for claim in registry.claims.values()))
+    found = [registry.path, *(claim.excerpt for claim in registry.claims.values())]
+    for claim in registry.claims.values():
+        raw = claim.citation.get("local")
+        if raw:
+            source = (registry.path.parent / str(raw)).resolve()
+            if source not in found:
+                found.append(source)
+    return tuple(found)
 
 
 def format_review(registry: ClaimRegistry) -> str:
@@ -157,6 +170,7 @@ def format_review(registry: ClaimRegistry) -> str:
         "# Scientific claim review",
         "",
         f"Registry: {registry.path}",
+        f"Visibility: **{registry.visibility}**",
         "",
     ]
     for claim in registry.claims.values():
@@ -213,6 +227,7 @@ def format_review(registry: ClaimRegistry) -> str:
 def report_to_json(registry: ClaimRegistry) -> dict[str, object]:
     return {
         "registry": str(registry.path),
+        "visibility": registry.visibility,
         "strict_ready": registry.strict_ready,
         "claims": [
             {
@@ -249,7 +264,12 @@ def report_to_json(registry: ClaimRegistry) -> dict[str, object]:
     }
 
 
-def _claim(registry_path: Path, raw: object, index: int) -> Claim:
+def _claim(
+    registry_path: Path,
+    raw: object,
+    index: int,
+    visibility: str,
+) -> Claim:
     if not isinstance(raw, dict):
         raise ClaimRegistryError(f"{registry_path}: claim {index} must be a mapping")
     claim_id = str(raw.get("id") or "").strip()
@@ -274,7 +294,7 @@ def _claim(registry_path: Path, raw: object, index: int) -> Claim:
     citation = raw.get("citation")
     if not isinstance(citation, dict):
         raise ClaimRegistryError(f"{registry_path}/{claim_id}: citation is required")
-    _validate_citation(registry_path, claim_id, citation)
+    _validate_citation(registry_path, claim_id, citation, visibility)
 
     excerpt_raw = str(raw.get("excerpt") or "").strip()
     if not excerpt_raw:
@@ -397,11 +417,33 @@ def _validate_dependencies(path: Path, claims: dict[str, Claim]) -> None:
         visit(claim_id)
 
 
-def _validate_citation(path: Path, claim_id: str, citation: dict) -> None:
+def _validate_citation(
+    path: Path,
+    claim_id: str,
+    citation: dict,
+    visibility: str,
+) -> None:
     arxiv = str(citation.get("arxiv") or "")
     doi = str(citation.get("doi") or "")
-    if not arxiv and not doi:
-        raise ClaimRegistryError(f"{path}/{claim_id}: citation needs arxiv or doi")
+    local = str(citation.get("local") or "").strip()
+    if local and (arxiv or doi):
+        raise ClaimRegistryError(
+            f"{path}/{claim_id}: local evidence cannot be mixed with arxiv/doi"
+        )
+    if local:
+        if visibility != "private":
+            raise ClaimRegistryError(
+                f"{path}/{claim_id}: local evidence is allowed only in visibility: private registries"
+            )
+        source = (path.parent / local).resolve()
+        if not source.is_file():
+            raise ClaimRegistryError(
+                f"{path}/{claim_id}: local evidence file not found: {local}"
+            )
+    elif not arxiv and not doi:
+        raise ClaimRegistryError(
+            f"{path}/{claim_id}: citation needs arxiv, doi, or private local evidence"
+        )
     if arxiv and not valid_arxiv(arxiv):
         raise ClaimRegistryError(f"{path}/{claim_id}: invalid arxiv id {arxiv!r}")
     if doi and not valid_doi(doi):
@@ -436,6 +478,18 @@ def _validate_excerpt(
             str(excerpt.get("doi") or "")
         ):
             raise ClaimRegistryError(f"{registry_path}/{claim_id}: excerpt doi mismatch")
+    if citation.get("local"):
+        cited_source = (registry_path.parent / str(citation["local"])).resolve()
+        excerpt_local = str(excerpt.get("local") or "").strip()
+        if not excerpt_local:
+            raise ClaimRegistryError(
+                f"{registry_path}/{claim_id}: private excerpt needs local source path"
+            )
+        excerpt_source = (excerpt_path.parent / excerpt_local).resolve()
+        if cited_source != excerpt_source:
+            raise ClaimRegistryError(
+                f"{registry_path}/{claim_id}: excerpt local source mismatch"
+            )
     if normalize_space(str(citation.get("locator") or "")) != normalize_space(
         str(excerpt.get("locator") or "")
     ):
@@ -445,6 +499,18 @@ def _validate_excerpt(
         raise ClaimRegistryError(
             f"{registry_path}/{claim_id}: excerpt quote is missing or too short"
         )
+    if citation.get("local"):
+        source_path = (registry_path.parent / str(citation["local"])).resolve()
+        try:
+            source_text = normalize_space(source_path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise ClaimRegistryError(
+                f"{registry_path}/{claim_id}: cannot read local evidence {source_path}: {exc}"
+            ) from exc
+        if quote not in source_text:
+            raise ClaimRegistryError(
+                f"{registry_path}/{claim_id}: excerpt quote is not present in local evidence"
+            )
     if kind == "equation":
         tex = str(raw.get("tex") or "")
         if normalize_tex(tex) not in normalize_tex(quote):
@@ -495,6 +561,8 @@ def _citation_text(citation: dict[str, object]) -> str:
         parts.append(f"arXiv:{citation['arxiv']}")
     if citation.get("doi"):
         parts.append(f"doi:{citation['doi']}")
+    if citation.get("local"):
+        parts.append(f"local:{citation['local']}")
     parts.append(str(citation.get("locator") or ""))
     return ", ".join(parts)
 

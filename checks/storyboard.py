@@ -160,6 +160,7 @@ def check_storyboard(path: Path) -> StoryboardReport:
             segments = []
         _check_cues(path, scene, segments, report)
         _check_claim_refs(scene_id, scene, registry, report)
+        _check_method_validation(scene_id, scene, registry, report)
         report.rows.append(
             f"{scene_id}: {question or '(no question)'} -> {takeaway or '(no takeaway)'}"
         )
@@ -239,6 +240,54 @@ def _check_claim_refs(
                 f"{scene_id}: claim_ref {ref} has no claim_registry"
             )
             continue
+        try:
+            registry.get(ref)
+        except ClaimRegistryError as exc:
+            report.problems.append(str(exc))
+
+
+def _check_method_validation(
+    scene_id: str,
+    scene: dict,
+    registry: ClaimRegistry | None,
+    report: StoryboardReport,
+) -> None:
+    raw = scene.get("method_validation")
+    if raw is None:
+        return
+    if not isinstance(raw, dict):
+        report.problems.append(f"{scene_id}: method_validation must be a mapping")
+        return
+    if registry is None:
+        report.problems.append(
+            f"{scene_id}: method_validation needs claim_registry"
+        )
+        return
+    test_ref = str(raw.get("test") or "").strip()
+    demonstrates = _strings(
+        raw.get("demonstrates"),
+        scene_id,
+        "method_validation.demonstrates",
+        report,
+    )
+    limits = _strings(
+        raw.get("does_not_establish"),
+        scene_id,
+        "method_validation.does_not_establish",
+        report,
+    )
+    if not test_ref:
+        report.problems.append(f"{scene_id}: method_validation.test is required")
+    if not demonstrates:
+        report.problems.append(
+            f"{scene_id}: method_validation.demonstrates must not be empty"
+        )
+    if not limits:
+        report.problems.append(
+            f"{scene_id}: method_validation.does_not_establish must not be empty"
+        )
+    refs = ([test_ref] if test_ref else []) + demonstrates + limits
+    for ref in refs:
         try:
             registry.get(ref)
         except ClaimRegistryError as exc:

@@ -21,6 +21,9 @@ Initial upstream survey: 2026-11-09. The repository now contains working HEP-spe
 | Reusable audience-independent scientific claim objects | implemented + tested | `checks/claims.py`, `examples/theory/vh/claims.yaml` |
 | Definition comparison + assumption propagation | implemented + tested | `checks/claims.py` definitions, dependencies, comparisons |
 | Hash-bound human interpretation review | implemented + tested | `python -m checks.review ...` |
+| Privacy-aware local evidence | implemented + tested | `visibility: private`, local evidence bound to review digest |
+| Bounded method-validation semantics | implemented + tested | storyboard `method_validation` block |
+| Integrated scientific review/release packet | implemented + tested | `python -m checks.release ...` |
 | Multi-audience end-to-end benchmark | implemented + tested | `examples/vhbb/` public, student, and specialist variants |
 | Synthetic scene render in CI | implemented + tested | `video/tests/test_explain_integration.py` |
 | Publication packages for Indico/CDS/YouTube | planned | not yet implemented |
