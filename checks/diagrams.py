@@ -36,7 +36,13 @@ from checks.citations import (
     valid_doi,
     vertex_key,
 )
-from checks.ufo_model import ModelError, canonical_token, load_model, required_arrow
+from checks.ufo_model import (
+    ModelError,
+    canonical_token,
+    conjugate_token,
+    load_model,
+    required_arrow,
+)
 from checks.yamlsubset import YamlError
 
 _DIAGRAM_KINDS = {"diagram", "manim"}
@@ -405,6 +411,7 @@ def _check_drawing(report: CitationReport, scene_id: str, diagram: dict, model) 
         report.add(Row(scene_id, "diagram", "FAIL", str(exc), "", ""))
         return
     lines = drawing["lines"]
+    crossed: dict[str, list[str]] = {}
     if lines:
         touched: dict[str, list[str]] = {}
         known = set()
@@ -441,12 +448,17 @@ def _check_drawing(report: CitationReport, scene_id: str, diagram: dict, model) 
                     f"{particle} arrow={arrow}",
                     f"required {expected}",
                 ))
-            for end in (line.get("source"), line.get("target")):
+            for endpoint, end in (("source", line.get("source")), ("target", line.get("target"))):
                 if end is None:
                     continue
                 end_s = str(end)
                 if known and end_s in known:
                     touched.setdefault(end_s, []).append(canonical_token(particle))
+                    # source -> target is the physical momentum direction. At a
+                    # source vertex the state is outgoing and must be crossed
+                    # to its conjugate for the UFO all-incoming convention.
+                    ufo_particle = particle if endpoint == "target" else conjugate_token(particle, model)
+                    crossed.setdefault(end_s, []).append(ufo_particle)
         if known:
             for vertex in diagram["raw"]["vertices"]:
                 if not isinstance(vertex, dict) or "id" not in vertex:
@@ -462,21 +474,34 @@ def _check_drawing(report: CitationReport, scene_id: str, diagram: dict, model) 
                         f"lines {list(got)}",
                         f"vertex {list(want)}",
                     ))
-    for index, legs in enumerate(diagram["vertices"], start=1):
+    raw_vertices = diagram["raw"].get("vertices") or []
+    for index, vertex in enumerate(raw_vertices, start=1):
+        legs = _vertex_legs(vertex)
+        check_legs = legs
+        crossed_note = ""
+        if isinstance(vertex, dict) and vertex.get("id"):
+            vid = str(vertex["id"])
+            directed = crossed.get(vid) or []
+            if len(directed) == len(legs):
+                check_legs = directed
+                crossed_note = " after crossing outgoing physical lines to the UFO all-incoming convention"
         try:
-            verdict = model.allows(legs)
+            verdict = model.allows(check_legs)
         except ModelError as exc:
             report.add(Row(scene_id, f"vertex {index}", "FAIL", str(exc), _vertex_block([legs]), ""))
             continue
+        message = verdict.message + crossed_note
+        model_body = verdict.vertex or "(no SM UFO vertex)"
+        if check_legs != legs:
+            model_body = f"UFO legs: [{', '.join(check_legs)}]\n{model_body}"
         report.add(Row(
             scene_id,
             f"vertex {index}",
             "PASS" if verdict.ok else "FAIL",
-            verdict.message,
+            message,
             _vertex_block([legs]),
-            verdict.vertex or "(no SM UFO vertex)",
+            model_body,
         ))
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python3 -m checks.diagrams")
