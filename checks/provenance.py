@@ -165,6 +165,35 @@ def check_inputs(
     return failures
 
 
+def check_inputs_explicit(
+    inputs: list[tuple[Path, str]],
+    root: Path,
+    manifests: list[Path] | tuple[Path, ...],
+) -> list[tuple[str, str, str]]:
+    """Check explicitly typed render inputs without filename inference."""
+    declarations: list[FileDeclaration] = []
+    for manifest in manifests:
+        declarations.extend(load_declarations(Path(manifest)))
+    by_path = {item.path.resolve(): item for item in declarations}
+    failures: list[tuple[str, str, str]] = []
+    root_resolved = Path(root).resolve()
+    for path, role in inputs:
+        resolved = Path(path).resolve()
+        rel = _relative(resolved, root_resolved)
+        declaration = by_path.get(resolved)
+        if declaration is None:
+            failures.append(
+                (
+                    "undeclared",
+                    rel,
+                    f"{role} file has no public source in sources.yaml",
+                )
+            )
+            continue
+        failures.extend(_verify(declaration, rel))
+    return failures
+
+
 def _declaration(entry: object, base: Path, manifest: Path) -> FileDeclaration:
     if not isinstance(entry, dict) or "path" not in entry or "source" not in entry:
         raise ProvenanceError(f"{manifest.name} file entry needs path and source")
