@@ -417,11 +417,33 @@ def _validate_dependencies(path: Path, claims: dict[str, Claim]) -> None:
         visit(claim_id)
 
 
-def _validate_citation(path: Path, claim_id: str, citation: dict) -> None:
+def _validate_citation(
+    path: Path,
+    claim_id: str,
+    citation: dict,
+    visibility: str,
+) -> None:
     arxiv = str(citation.get("arxiv") or "")
     doi = str(citation.get("doi") or "")
-    if not arxiv and not doi:
-        raise ClaimRegistryError(f"{path}/{claim_id}: citation needs arxiv or doi")
+    local = str(citation.get("local") or "").strip()
+    if local and (arxiv or doi):
+        raise ClaimRegistryError(
+            f"{path}/{claim_id}: local evidence cannot be mixed with arxiv/doi"
+        )
+    if local:
+        if visibility != "private":
+            raise ClaimRegistryError(
+                f"{path}/{claim_id}: local evidence is allowed only in visibility: private registries"
+            )
+        source = (path.parent / local).resolve()
+        if not source.is_file():
+            raise ClaimRegistryError(
+                f"{path}/{claim_id}: local evidence file not found: {local}"
+            )
+    elif not arxiv and not doi:
+        raise ClaimRegistryError(
+            f"{path}/{claim_id}: citation needs arxiv, doi, or private local evidence"
+        )
     if arxiv and not valid_arxiv(arxiv):
         raise ClaimRegistryError(f"{path}/{claim_id}: invalid arxiv id {arxiv!r}")
     if doi and not valid_doi(doi):
@@ -456,6 +478,18 @@ def _validate_excerpt(
             str(excerpt.get("doi") or "")
         ):
             raise ClaimRegistryError(f"{registry_path}/{claim_id}: excerpt doi mismatch")
+    if citation.get("local"):
+        cited_source = (registry_path.parent / str(citation["local"])).resolve()
+        excerpt_local = str(excerpt.get("local") or "").strip()
+        if not excerpt_local:
+            raise ClaimRegistryError(
+                f"{registry_path}/{claim_id}: private excerpt needs local source path"
+            )
+        excerpt_source = (excerpt_path.parent / excerpt_local).resolve()
+        if cited_source != excerpt_source:
+            raise ClaimRegistryError(
+                f"{registry_path}/{claim_id}: excerpt local source mismatch"
+            )
     if normalize_space(str(citation.get("locator") or "")) != normalize_space(
         str(excerpt.get("locator") or "")
     ):
@@ -465,6 +499,18 @@ def _validate_excerpt(
         raise ClaimRegistryError(
             f"{registry_path}/{claim_id}: excerpt quote is missing or too short"
         )
+    if citation.get("local"):
+        source_path = (registry_path.parent / str(citation["local"])).resolve()
+        try:
+            source_text = normalize_space(source_path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise ClaimRegistryError(
+                f"{registry_path}/{claim_id}: cannot read local evidence {source_path}: {exc}"
+            ) from exc
+        if quote not in source_text:
+            raise ClaimRegistryError(
+                f"{registry_path}/{claim_id}: excerpt quote is not present in local evidence"
+            )
     if kind == "equation":
         tex = str(raw.get("tex") or "")
         if normalize_tex(tex) not in normalize_tex(quote):
@@ -515,6 +561,8 @@ def _citation_text(citation: dict[str, object]) -> str:
         parts.append(f"arXiv:{citation['arxiv']}")
     if citation.get("doi"):
         parts.append(f"doi:{citation['doi']}")
+    if citation.get("local"):
+        parts.append(f"local:{citation['local']}")
     parts.append(str(citation.get("locator") or ""))
     return ", ".join(parts)
 
