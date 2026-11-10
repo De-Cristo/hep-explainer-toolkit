@@ -11,8 +11,11 @@ import zlib
 from contextlib import redirect_stdout
 from pathlib import Path
 
+import hashlib
+
 from checks.confidentiality import load_config, main, scan
 from checks.pdftext import extract_pdf_text
+from examples.toy.emit import toy_png
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -92,6 +95,73 @@ class ConfidentialityFixtureTest(unittest.TestCase):
     def test_repo_itself_has_no_failures(self) -> None:
         report = scan(ROOT)
         self.assertEqual(report.failures, [], format_findings(report.failures))
+
+    def test_unlisted_png_is_refused_without_a_marker(self) -> None:
+        """An internal-looking plot with no marker word and no manifest row is blocked."""
+        png = toy_png()
+        digest = hashlib.sha256(png).hexdigest()
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            (folder / "toy_plot.png").write_bytes(png)
+            (folder / "internal_plot.png").write_bytes(_png("mass distribution"))
+            (folder / "sources.yaml").write_text(
+                "files:\n"
+                "  - path: toy_plot.png\n"
+                "    source:\n"
+                "      type: toy\n"
+                "      generator: examples/toy/emit.py\n"
+                f"      sha256: {digest}\n",
+                encoding="utf-8",
+            )
+            report = scan(folder)
+        undeclared = [item for item in report.failures if item.rule_id == "undeclared"]
+        self.assertEqual(
+            [item.path for item in undeclared],
+            ["internal_plot.png"],
+            format_findings(report.failures),
+        )
+        self.assertTrue(all(item.rule_id != "cms_private_work" for item in report.failures))
+
+    def test_bare_toy_label_is_refused(self) -> None:
+        png = toy_png()
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            (folder / "toy_plot.png").write_bytes(png)
+            (folder / "sources.yaml").write_text(
+                "files:\n  - path: toy_plot.png\n    source: toy\n",
+                encoding="utf-8",
+            )
+            report = scan(folder)
+        self.assertTrue(any(item.rule_id == "toy_provenance" for item in report.failures))
+
+    def test_toy_generator_hash_must_match_a_rerun(self) -> None:
+        png = toy_png()
+        digest = hashlib.sha256(png).hexdigest()
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            (folder / "toy_plot.png").write_bytes(png)
+            (folder / "sources.yaml").write_text(
+                "files:\n"
+                "  - path: toy_plot.png\n"
+                "    source:\n"
+                "      type: toy\n"
+                "      generator: examples/toy/emit.py\n"
+                f"      sha256: {digest}\n",
+                encoding="utf-8",
+            )
+            clean = scan(folder)
+            self.assertEqual(clean.failures, [], format_findings(clean.failures))
+            (folder / "sources.yaml").write_text(
+                "files:\n"
+                "  - path: toy_plot.png\n"
+                "    source:\n"
+                "      type: toy\n"
+                "      generator: examples/toy/emit.py\n"
+                f"      sha256: {'0' * 64}\n",
+                encoding="utf-8",
+            )
+            mismatch = scan(folder)
+        self.assertTrue(any(item.rule_id == "toy_provenance" for item in mismatch.failures))
 
 
 class ConfidentialityUnitTest(unittest.TestCase):

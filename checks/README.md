@@ -18,7 +18,33 @@ YAML configs use a small subset: indentation with spaces, mappings, lists, quote
 
 ## 1. Confidentiality gate
 
-The gate fails the process when a deck or project folder still carries an internal marker. The marker list is [`config/markers.yaml`](config/markers.yaml). Edit that file to add or drop a phrase, a note-number pattern, a CADI group, or a private-link pattern. Do not hard-code new phrases in the Python.
+An internal plot often has no marker word, so the gate is an allowlist. Every image, plot-data file (JSON, CSV, or a `*datacard*` text file), slide HTML file, and narration source must appear in the same `sources.yaml` the number check uses, with a public source:
+
+| `source.type` | What it requires |
+|---|---|
+| `hepdata` | a record URL or id |
+| `arxiv` | an id `NNNN.NNNNN` |
+| `cds` | an `https://cds.cern.ch/...` link, or a `CMS-PAS-...` id |
+| `toy` | a generator script under `examples/toy/` and a `sha256` |
+
+`source: toy` with nothing else is refused. The check reruns `python3 <generator> OUTPUT` and the sha256 of that output must equal both the file on disk and the manifest. The generator has to live under `examples/toy/` so a copied plot cannot be waved through by a script elsewhere.
+
+```yaml
+files:
+  - path: talk.html
+    source:
+      type: arxiv
+      arxiv: "0000.00000"
+  - path: toy_plot.png
+    source:
+      type: toy
+      generator: examples/toy/emit.py
+      sha256: "<64 hex chars>"
+```
+
+A file with no row is a failure (`undeclared`), including an unlabelled PNG that contains none of the marker phrases. Paths are relative to the manifest and must stay inside the deck.
+
+The marker scan below is an extra layer on top of that allowlist. It still fails the run when a declared public file carries an internal marker. The marker list is [`config/markers.yaml`](config/markers.yaml).
 
 | Rule id | Result | What it matches |
 |---|---|---|
@@ -84,7 +110,11 @@ The hook uses `python3` and scans the tree from the repository root. [`.github/w
 
 ## 2. Number traceability
 
-Every number in the slide text and every number in the narration (the text that would be sent to TTS) must match a row in a sources manifest, under the manifest's rounding and tolerance rule. Exemptions come only from the allow list, and each one is printed with the rule id.
+Every number in the slide text and every number in the narration (the text that would be sent to TTS) must match one manifest row, not merely equal some value that appears somewhere in the source. A row can name `quantity` (`mu`, `cross_section`), `process` (`WH`, `ZH`, ...), `kind` (`central`, `stat`, `syst`, `total`), and `unit`. The checker reads those same words next to the number: the nearest process token, a `(stat)` / `(syst)` / `(total)` label, and the unit. `1.31 ± 0.26 (stat) ± 0.24 (syst)` does not match a source whose statistical uncertainty is 0.24 and whose systematic uncertainty is 0.26, even though both numbers exist. `WH mu = 1.07` does not match the ZH value 1.07.
+
+A separate wording lint rejects a signal strength (`mu`, `μ`, or "signal strength") that is called a cross section or given a cross-section unit (`pb`, `fb`, `nb`, ...). Wording mistakes outside that rule are not caught. Exemptions come only from the allow list, and each one is printed with the rule id.
+
+The public CMS VH(bb) values used in the tests are WH mu = 1.31 ± 0.24 (stat) ± 0.26 (syst) and ZH mu = 1.07 ± 0.17 (stat) ± 0.17 (syst).
 
 ```bash
 python3 -m checks.traceability check slides/my-talk --manifest slides/my-talk/sources.yaml
@@ -120,6 +150,22 @@ inputs:
     - narration.txt
 
 sources:
+  - id: wh_mu
+    quantity: mu
+    process: WH
+    kind: central
+    value: 1.31
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: wh_mu_stat
+    quantity: mu
+    process: WH
+    kind: stat
+    value: 0.24
+    source:
+      type: paper
+      arxiv: "1808.08242"
   - id: toy_mass
     value: 1.2
     uncertainty: 0.05
@@ -194,6 +240,7 @@ Confidentiality:
 - A CADI code is cleared by a same-file public id or by a string in the allow file. The check does not open the citation or prove it describes that analysis.
 - `checks/tests/`, `checks/config/`, `upstream/`, and the allow file are not scanned. A deck placed on an `exempt_paths` entry is reported as an exemption instead of a failure.
 - `Preliminary` warns and does not fail the gate unless `--strict` is set.
+- The allowlist covers images, plot data, slide HTML, and narration. Other files are only marker-scanned. A base64 image inside HTML is not a separate row; it is covered by the HTML file's declaration, and the marker layer still reads its metadata.
 
 Traceability:
 
@@ -202,5 +249,6 @@ Traceability:
 - A comma is a thousands separator (`138,000`), not a decimal comma.
 - Half-up rounding accepts a coarser quote when that quote is the correctly rounded source (`13.6` shown as `14`).
 - A four-digit year in 1990–2100 is exempt even if a count happens to land on a year. URL digits, arXiv ids, versions, timestamps, and fenced code are exempt by the default allow file.
-- A shown number with no unit can match a source that has a unit when the raw values agree.
-- An unused manifest row is not an error. Two sources with the same value are not distinguished.
+- A shown number with no unit can match a source that has a unit when the raw values agree, except a `mu` or `signal_strength` row, which rejects any unit.
+- An unused manifest row is not an error. A number with no nearby process word is not tied to a process, so `1.07` alone can still match whichever row has that value.
+- Wording is checked only by a small quantity rule: a signal strength (`mu`, `μ`, or "signal strength") must not be called a cross section and must not be given a cross-section unit (`pb`, `fb`, ...). Other wording mistakes are not caught. That includes the wrong production channel when the process token is missing, "observed" versus "expected", and synonyms outside the process list `WH`, `ZH`, `ttH`, `tH`, `ggH`, `VBF`, `VH`, `bbH`.

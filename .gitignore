@@ -27,11 +27,8 @@ __pycache__/
 .ruff_cache/
 .ipynb_checkpoints/
 
-# Virtual environments. env/requirements.in is the Python 3.12 pin, not a venv.
+# Virtual environments. The tracked env/ directory holds the Python 3.12
+# setup (requirements.in and anything added beside it), so it is not ignored.
+# Only real virtualenv directories are.
 .venv/
 venv/
-ENV/
-env/*
-!env/requirements.in
-!env/requirements.txt
-!env/setup.sh

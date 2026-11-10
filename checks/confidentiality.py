@@ -22,6 +22,11 @@ from pathlib import Path
 
 from checks.imagemeta import metadata_strings
 from checks.pdftext import extract_pdf_text
+from checks.provenance import (
+    ProvenanceError,
+    check_inputs,
+    discover_manifests,
+)
 from checks.yamlsubset import YamlError, load as load_yaml
 
 _DEFAULT_CONFIG = Path(__file__).resolve().parent / "config" / "markers.yaml"
@@ -172,6 +177,7 @@ def scan(
     root: Path,
     config: Config | None = None,
     allow: AllowList | None = None,
+    manifest: Path | None = None,
 ) -> Report:
     """Scan ``root`` (a file or a directory) and return every hit."""
     config = config or load_config()
@@ -192,14 +198,37 @@ def scan(
     else:
         files = list(_iter_files(root, config))
         base = root
+    considered: list[Path] = []
     for path in files:
         if path.resolve() in skipped_files:
             continue
         rel = _relative(path, base)
         if _matches_prefix(rel, config.skip_paths):
             continue
+        considered.append(path)
         findings.extend(_scan_file(path, rel, config, allow))
+    findings.extend(_provenance(considered, base, config, manifest))
     return Report(root=str(root), findings=findings, allow_source=allow.source)
+
+
+def _provenance(
+    files: list[Path],
+    base: Path,
+    config: Config,
+    manifest: Path | None,
+) -> list[Finding]:
+    if manifest is not None:
+        manifests = [manifest]
+    else:
+        manifests = discover_manifests(base, config.skip_paths)
+    try:
+        rows = check_inputs(files, base, manifests)
+    except ProvenanceError as exc:
+        raise ConfigError(str(exc)) from exc
+    return [
+        Finding("fail", rule, rel, None, "provenance", rel, note)
+        for rule, rel, note in rows
+    ]
 
 
 def format_report(report: Report, *, verbose: bool = False) -> str:
@@ -268,6 +297,12 @@ def main(argv: list[str] | None = None) -> int:
     scan_parser = sub.add_parser("scan", help="scan a file or directory")
     scan_parser.add_argument("path", type=Path)
     scan_parser.add_argument("--config", type=Path, default=None)
+    scan_parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=None,
+        help="sources.yaml with a files: provenance allowlist (default: discover sources.yaml)",
+    )
     scan_parser.add_argument("--allow-file", type=Path, default=None)
     scan_parser.add_argument(
         "--allow-marker",
@@ -287,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         config = load_config(args.config)
         allow = _resolve_allow(args.path, args.allow_file, args.allow_marker)
-        report = scan(args.path, config, allow)
+        report = scan(args.path, config, allow, args.manifest)
     except ConfigError as exc:
         print(f"confidentiality: error: {exc}", file=sys.stderr)
         return 2

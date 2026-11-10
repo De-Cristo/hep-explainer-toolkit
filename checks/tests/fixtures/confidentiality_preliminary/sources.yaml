@@ -1,0 +1,5 @@
+files:
+  - path: talk.html
+    source:
+      type: hepdata
+      record: "https://www.hepdata.net/record/toy0001"
