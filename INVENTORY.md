@@ -1,6 +1,24 @@
 # HEP visualization toolkit: inventory and integration map
-Searcher, 2026-11-09. Sources are in `upstream/` (Machine Manager's copy); nothing is installed or run yet.
-Everything below comes from reading the repos. Anything marked (guess) is untested.
+
+Initial upstream survey: 2026-11-09. The repository now contains working HEP-specific checks, diagram rendering, scene rendering, and a narrated slide-video path; this file keeps the upstream integration survey but no longer treats the toolkit itself as untested.
+
+## Current capability status
+
+| Capability | Status | Entry point / example |
+|---|---|---|
+| Audience + learning-goal authoring brief | implemented + tested | `python3 -m checks.brief check examples/briefs/vhbb-undergraduate.yaml` |
+| Citation / excerpt / equation checks | implemented + tested | `python3 -m checks.diagrams check SCENE.yaml` |
+| SM UFO vertex + fermion-flow validation | implemented + tested | `checks/diagrams.py`, `examples/theory/vh/` |
+| Number traceability | implemented + tested | `python3 -m checks.traceability check ...` |
+| Confidentiality + provenance gate | implemented + tested | `python3 -m checks.confidentiality scan .` |
+| Frontend slide deck -> narrated MP4 | implemented; Playwright/Kokoro runtime required | `python render-video.py video/examples/toy-peak` |
+| Theory scene -> narrated MP4 | implemented; renderer dependencies required | `python3 -m video.explain SCENE.yaml -o build/out.mp4` |
+| Static / animated Feynman diagrams | implemented | `python3 -m diagrams ...` |
+| Semantic narration-to-visual cue timing | planned | not yet implemented |
+| Reusable audience-independent scientific claim objects | planned | current scene claims are still local to narration |
+| Publication packages for Indico/CDS/YouTube | planned | not yet implemented |
+
+The sections below describe the upstream components and the original integration rationale. Items explicitly marked as guesses remain survey notes rather than supported toolkit features.
 
 ## 1. What we gathered
 | Repo (commit) | Licence | What it is | Needs |
