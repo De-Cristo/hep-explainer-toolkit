@@ -19,7 +19,13 @@ def _write(path: Path, text: str) -> Path:
     return path
 
 
-def _fixture(folder: Path, *, requires: str = "known", cover: bool = True, line_id: str = "incoming") -> Path:
+def _fixture(
+    folder: Path,
+    *,
+    requires: str = "known",
+    cover: bool = True,
+    line_id: str = "incoming",
+) -> Path:
     _write(
         folder / "brief.yaml",
         textwrap.dedent(
@@ -57,40 +63,38 @@ def _fixture(folder: Path, *, requires: str = "known", cover: bool = True, line_
             """
         ),
     )
-    covered = """
-    covers_distinctions:
-      - "Known and new_concept are different."
-""" if cover else ""
-    return _write(
-        folder / "scene.yaml",
-        textwrap.dedent(
-            f"""
-            title: test
-            brief: brief.yaml
-            scenes:
-              - id: one
-                question: "What new idea follows?"
-                takeaway: "The new concept follows from the declared prerequisite."
-                requires:
-                  - {requires}
-                introduces:
-                  - new_concept
-            {covered}
-                visual_purpose: "Reveal the relevant diagram state."
-                narration:
-                  - cue: first
-                    text: "This segment introduces the new concept."
-                visual:
-                  kind: diagram
-                  diagram: diagram.yaml
-                  cues:
-                    - id: first
-                      show_lines:
-                        - {line_id}
-                claims: []
-            """
-        ),
-    )
+    lines = [
+        "title: test",
+        "brief: brief.yaml",
+        "scenes:",
+        "  - id: one",
+        '    question: "What new idea follows?"',
+        '    takeaway: "The new concept follows from the declared prerequisite."',
+        "    requires:",
+        f"      - {requires}",
+        "    introduces:",
+        "      - new_concept",
+    ]
+    if cover:
+        lines.extend([
+            "    covers_distinctions:",
+            '      - "Known and new_concept are different."',
+        ])
+    lines.extend([
+        '    visual_purpose: "Reveal the relevant diagram state."',
+        "    narration:",
+        "      - cue: first",
+        '        text: "This segment introduces the new concept."',
+        "    visual:",
+        "      kind: diagram",
+        "      diagram: diagram.yaml",
+        "      cues:",
+        "        - id: first",
+        "          show_lines:",
+        f"            - {line_id}",
+        "    claims: []",
+    ])
+    return _write(folder / "scene.yaml", "\n".join(lines) + "\n")
 
 
 class StoryboardTest(unittest.TestCase):
@@ -122,14 +126,8 @@ class StoryboardTest(unittest.TestCase):
             folder = Path(tmp)
             scene = _fixture(folder)
             text = scene.read_text(encoding="utf-8").replace(
-                "                  cues:\n"
-                "                    - id: first\n"
-                "                      show_lines:\n"
-                "                        - incoming\n",
-                "                  cues:\n"
-                "                    - id: other\n"
-                "                      show_lines:\n"
-                "                        - incoming\n",
+                "        - id: first\n",
+                "        - id: other\n",
             )
             scene.write_text(text, encoding="utf-8")
             report = check_storyboard(scene)
