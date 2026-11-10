@@ -135,7 +135,16 @@ def load_registry(path: Path) -> ClaimRegistry:
         if claim.id in claims:
             raise ClaimRegistryError(f"{path}: duplicate claim id {claim.id}")
         claims[claim.id] = claim
-    return ClaimRegistry(path, claims)
+
+    raw_comparisons = data.get("comparisons") or []
+    if not isinstance(raw_comparisons, list):
+        raise ClaimRegistryError(f"{path}: comparisons must be a list")
+    comparisons = tuple(
+        _comparison(path, raw, index, claims)
+        for index, raw in enumerate(raw_comparisons, 1)
+    )
+    _validate_dependencies(path, claims)
+    return ClaimRegistry(path, claims, comparisons)
 
 
 def registry_dependencies(path: Path) -> tuple[Path, ...]:
@@ -172,6 +181,13 @@ def format_review(registry: ClaimRegistry) -> str:
             lines.append(f"- Context: {rendered}")
         if claim.assumptions:
             lines.append("- Assumptions: " + "; ".join(claim.assumptions))
+        if claim.depends_on:
+            lines.append("- Depends on: " + ", ".join(claim.depends_on))
+        if claim.assumption_tags:
+            lines.append("- Assumption tags: " + ", ".join(claim.assumption_tags))
+        effective = registry.effective_assumptions(claim.id)
+        if effective:
+            lines.append("- Effective assumptions: " + "; ".join(effective))
         if claim.caveats:
             lines.append("- Caveats: " + "; ".join(claim.caveats))
         lines.extend([
@@ -179,6 +195,18 @@ def format_review(registry: ClaimRegistry) -> str:
             f"Strict release ready: **{'yes' if claim.strict_ready else 'no'}**",
             "",
         ])
+    if registry.comparisons:
+        lines.extend(["# Definition comparisons", ""])
+        for comparison in registry.comparisons:
+            lines.extend([
+                f"## {comparison.id}",
+                "",
+                f"- Left: {comparison.left}",
+                f"- Right: {comparison.right}",
+                "- Same when supported by: " + ", ".join(comparison.same_when),
+                "- Differ when supported by: " + ", ".join(comparison.differs_when),
+                "",
+            ])
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -200,10 +228,23 @@ def report_to_json(registry: ClaimRegistry) -> dict[str, object]:
                 "context": claim.context,
                 "assumptions": list(claim.assumptions),
                 "caveats": list(claim.caveats),
+                "depends_on": list(claim.depends_on),
+                "assumption_tags": list(claim.assumption_tags),
+                "effective_assumptions": list(registry.effective_assumptions(claim.id)),
                 "review": claim.review,
                 "strict_ready": claim.strict_ready,
             }
             for claim in registry.claims.values()
+        ],
+        "comparisons": [
+            {
+                "id": item.id,
+                "left": item.left,
+                "right": item.right,
+                "same_when": list(item.same_when),
+                "differs_when": list(item.differs_when),
+            }
+            for item in registry.comparisons
         ],
     }
 
