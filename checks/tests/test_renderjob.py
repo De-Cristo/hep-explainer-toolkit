@@ -20,47 +20,46 @@ def _write(path: Path, text: str) -> Path:
 
 
 def _deck_manifest(*, fit: bool = False, include_narration: bool = True) -> str:
-    narration_file = """
-  - path: narration.txt
-    source:
-      type: arxiv
-      arxiv: "1808.08242"
-""" if include_narration else ""
-    fit_file = """
-  - path: fit.json
-    source:
-      type: arxiv
-      arxiv: "1808.08242"
-""" if fit else ""
-    source = """
-  - id: mass
-    value: 125
-    unit: GeV
-    source:
-      type: fit_json
-      path: fit.json
-      key: mass
-""" if fit else """
-  - id: mass
-    value: 125
-    unit: GeV
-    source:
-      type: paper
-      arxiv: "1808.08242"
-"""
-    return textwrap.dedent(
-        f"""
-        files:
-          - path: deck.html
-            source:
-              type: arxiv
-              arxiv: "1808.08242"
-        {narration_file}
-        {fit_file}
-        sources:
-        {source}
-        """
-    )
+    lines = [
+        "files:",
+        "  - path: deck.html",
+        "    source:",
+        "      type: arxiv",
+        '      arxiv: "1808.08242"',
+    ]
+    if include_narration:
+        lines.extend([
+            "  - path: narration.txt",
+            "    source:",
+            "      type: arxiv",
+            '      arxiv: "1808.08242"',
+        ])
+    if fit:
+        lines.extend([
+            "  - path: fit.json",
+            "    source:",
+            "      type: arxiv",
+            '      arxiv: "1808.08242"',
+        ])
+    lines.append("sources:")
+    lines.extend([
+        "  - id: mass",
+        "    value: 125",
+        "    unit: GeV",
+        "    source:",
+    ])
+    if fit:
+        lines.extend([
+            "      type: fit_json",
+            "      path: fit.json",
+            "      key: mass",
+        ])
+    else:
+        lines.extend([
+            "      type: paper",
+            '      arxiv: "1808.08242"',
+        ])
+    return "\n".join(lines) + "\n"
 
 
 class RenderJobIntegrityTest(unittest.TestCase):
