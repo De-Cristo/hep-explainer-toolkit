@@ -13,7 +13,8 @@ import json
 import sys
 from pathlib import Path
 
-from checks.diagrams import SceneError, check_path
+from checks.diagrams import SceneError
+from checks.finaltext import FinalTextError, assert_captions, run_ordered_checks
 from checks.yamlsubset import YamlError, load as load_yaml
 from diagrams.render import render_equation, render_figure
 from video.lexicon import apply_lexicon, load_lexicon
@@ -39,18 +40,26 @@ def render_explanation(
     work_dir: Path | None = None,
     synthesize=None,
 ) -> dict:
-    """Render ``scene`` to ``out``. ``synthesize(text, wav)`` replaces Kokoro in tests."""
+    """Render ``scene`` to ``out``. ``synthesize(text, wav)`` replaces Kokoro in tests.
+
+    Language runs first. Provenance, number trace, and the diagram check then
+    read this scene file. Rendering uses that text and stops if its hash changed.
+    """
     apply_thread_limit(threads)
     scene = Path(scene)
     out = Path(out)
     document = load_yaml(scene.read_text(encoding="utf-8"))
     if not isinstance(document, dict) or not document.get("scenes"):
         raise SystemExit(f"{scene} needs a scenes list")
-    report = check_path(scene)
-    if not report.ok:
-        failed = [row for row in report.rows if row.status == "FAIL"]
-        detail = "\n".join(f"{row.scene}/{row.item}: {row.message}" for row in failed[:8])
-        raise SystemExit(f"scene check failed, not rendering:\n{detail}")
+    try:
+        seal = run_ordered_checks(scene.parent, _final_paths(scene, document))
+        assert_captions(
+            scene,
+            [" ".join(str(item.get("narration") or "").split()) for item in document["scenes"]],
+            seal,
+        )
+    except FinalTextError as exc:
+        raise SystemExit(str(exc)) from exc
 
     if work_dir is None:
         work_dir = out.parent / f"{out.stem}-work"
@@ -107,6 +116,11 @@ def render_explanation(
     else:
         concat_segments(segments, silent, threads=threads)
     srt = out.with_suffix(".srt")
+    try:
+        seal.assert_unchanged()
+        assert_captions(scene, [text for _start, _end, text in cues], seal)
+    except FinalTextError as exc:
+        raise SystemExit(str(exc)) from exc
     write_srt(srt, cues)
     out.parent.mkdir(parents=True, exist_ok=True)
     add_subtitles(silent, srt, out, burn_in=False, threads=threads)
@@ -118,10 +132,33 @@ def render_explanation(
         "video_seconds": video_s,
         "audio_seconds": audio_s,
         "scenes": steps,
+        "final_text_sha256": seal.hashes,
     }
     out.with_suffix(".timings.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(f"wrote {out}  video {video_s:.2f}s audio {audio_s:.2f}s")
     return summary
+
+
+def _final_paths(scene: Path, document: dict) -> list[Path]:
+    """Scene file plus the diagrams and excerpts the checks and the render read."""
+    paths = [scene.resolve()]
+    for item in document["scenes"]:
+        visual = item.get("visual") or {}
+        for key in ("diagram", "file"):
+            raw = visual.get(key)
+            if raw:
+                paths.append((scene.parent / str(raw)).resolve())
+        for claim in item.get("claims") or []:
+            raw = claim.get("excerpt")
+            if raw:
+                paths.append((scene.parent / str(raw)).resolve())
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        if path not in seen:
+            seen.add(path)
+            unique.append(path)
+    return unique
 
 
 def _picture(scene_path: Path, item: dict, dest_stem: Path) -> Path:
