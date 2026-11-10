@@ -91,7 +91,7 @@ The machine half of the style pass is:
 python3 -m checks.language scan PATH
 ```
 
-Exit 1 means a banned phrase or a bullet over the word cap. A narration sentence over the cap is a warning, and a failure with `--strict`. The phrase list and the caps live in `checks/config/language.yaml`. The pipeline runs this before provenance and number trace.
+Exit 1 means a banned phrase or a bullet over the word cap. A narration sentence over the cap is a warning, and a failure with `--strict`. The phrase list and the caps live in `checks/config/language.yaml`. The pipeline runs this before provenance and number trace. You do not have to run it twice.
 
 ### hep-presentation-craft
 

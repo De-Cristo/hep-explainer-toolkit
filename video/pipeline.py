@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from checks.finaltext import FinalTextError, assert_captions, seal_for_render
 from video.deck import load_deck, resolve_deck_inputs, walk_states
 from video.lexicon import apply_lexicon, load_lexicon
 from video.mux import (
@@ -54,10 +55,24 @@ def render(
     check_only: bool = False,
     synthesize=None,
 ) -> dict:
-    """Run the pipeline. ``synthesize(spoken, wav_path) -> None`` overrides Kokoro (tests)."""
+    """Run the pipeline. ``synthesize(spoken, wav_path) -> None`` overrides Kokoro (tests).
+
+    The language pass runs first. Provenance, number trace, and the diagram
+    check then read those same files. Rendering uses that text, and stops if
+    the files no longer match the hash the checks saw.
+    """
     apply_thread_limit(threads)
     html_path, narration_path = resolve_deck_inputs(Path(deck), Path(narration) if narration else None)
+    try:
+        seal = seal_for_render(html_path, narration_path)
+    except FinalTextError as exc:
+        raise SystemExit(str(exc)) from exc
     script: Script = load_script(narration_path)
+    try:
+        seal.assert_unchanged()
+        assert_captions(narration_path, [cue.text for cue in script.steps], seal)
+    except FinalTextError as exc:
+        raise SystemExit(str(exc)) from exc
     if voice:
         script = Script(
             script.title, voice, script.lang, script.speed, script.pad_seconds,
@@ -150,6 +165,12 @@ def render(
     )
 
     srt_path = out.with_suffix(".srt")
+    caption_text = [step.text for step in timed]
+    try:
+        seal.assert_unchanged()
+        assert_captions(narration_path, caption_text, seal)
+    except FinalTextError as exc:
+        raise SystemExit(str(exc)) from exc
     write_srt(srt_path, [(step.start, step.end, step.text) for step in timed])
     print("muxing subtitles" + (" (bottom band burn-in)" if burn_in else " (mov_text only)"))
     add_subtitles(
@@ -174,6 +195,7 @@ def render(
         "audio_seconds": audio_s,
         "probed_duration_seconds": video_s,
         "steps": [asdict(step) for step in timed],
+        "final_text_sha256": seal.hashes,
     }
     timings = out.with_suffix(".timings.json")
     timings.write_text(json.dumps(report, indent=2), encoding="utf-8")

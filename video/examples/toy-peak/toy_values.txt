@@ -1,0 +1,5 @@
+# Simulated placeholders for the toy deck. Not a measurement.
+centre 125
+chi2 1.1
+energy 13.6
+lumi 10
