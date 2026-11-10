@@ -1,0 +1,30 @@
+# Rendered media. Commit sources, not the pictures and sound.
+*.mp4
+*.webm
+*.wav
+*.mp3
+# Manim writes frames, partial movies, and TeX caches here.
+media/
+
+# Model weights
+*.onnx
+*.pt
+*.safetensors
+*.pth
+
+# Node
+node_modules/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
