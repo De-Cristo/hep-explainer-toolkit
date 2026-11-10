@@ -1,0 +1,225 @@
+claims:
+  - id: vhbb.hbb.decay
+    kind: claim
+    origin: theory
+    statement: "The Higgs boson couples to bottom quarks, providing the H-to-bb decay targeted by the explanation."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Section 1"
+    excerpt: excerpts/theory-hbb.yaml
+    context:
+      model: SM
+      role: decay
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vhbb.production.separation
+    kind: claim
+    origin: theory
+    statement: "In VH Higgs-strahlung, the vector boson is produced together with the Higgs, while the bottom-quark pair is attached to the Higgs decay."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Sections 1 and 3"
+    excerpt: excerpts/theory-vh.yaml
+    context:
+      model: SM
+      role: production_vs_decay
+    caveats:
+      - "The Feynman diagram represents an amplitude topology, not a literal movie in time."
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vhbb.strategy.vh
+    kind: claim
+    origin: measurement
+    statement: "VH production supplied the main contribution to the CMS H-to-bb observation result."
+    citation:
+      arxiv: "1808.08242"
+      locator: "Abstract sentence 2 (production)"
+    excerpt: excerpts/vh-main.yaml
+    context:
+      experiment: CMS
+      process: VH
+      decay: Hbb
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vhbb.categories.leptons
+    kind: claim
+    origin: measurement
+    statement: "The VH H-to-bb searches used final states with zero, one, or two charged leptons and two identified bottom-quark jets."
+    citation:
+      arxiv: "1808.08242"
+      locator: "Abstract sentence 2 (final states)"
+    excerpt: excerpts/categories.yaml
+    context:
+      experiment: CMS
+      process: VH
+      decay: Hbb
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vhbb.btag.object
+    kind: claim
+    origin: definition
+    statement: "A b jet is a reconstructed jet associated with bottom-quark origin; it is not the bottom quark itself."
+    citation:
+      arxiv: "1712.07158"
+      locator: "Abstract sentence 1"
+    excerpt: excerpts/btag.yaml
+    context:
+      experiment: CMS
+      object: b_jet
+    caveats:
+      - "Identification is probabilistic and can misidentify other jet flavours."
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vhbb.dataset.lumi
+    kind: number
+    origin: measurement
+    statement: "The 2017 CMS data sample used for the described measurement corresponds to 41.3 inverse femtobarns."
+    value: 41.3
+    unit: "fb-1"
+    citation:
+      arxiv: "1808.08242"
+      locator: "Abstract sentence 3"
+    excerpt: excerpts/dataset.yaml
+    context:
+      experiment: CMS
+      year: 2017
+      energy_TeV: 13
+    review:
+      source: declared
+      evidence: retrieved
+      value: matched
+      interpretation: pending
+
+  - id: vhbb.dataset.energy
+    kind: number
+    origin: measurement
+    statement: "The 2017 CMS data sample described in the paper was collected at 13 TeV."
+    value: 13
+    unit: TeV
+    citation:
+      arxiv: "1808.08242"
+      locator: "Abstract sentence 3"
+    excerpt: excerpts/dataset.yaml
+    context:
+      experiment: CMS
+      year: 2017
+      luminosity_fb-1: 41.3
+    review:
+      source: declared
+      evidence: retrieved
+      value: matched
+      interpretation: pending
+
+  - id: vhbb.vh.significance
+    kind: number
+    origin: measurement
+    statement: "The combined VH measurements reported an observed significance of 4.8 standard deviations."
+    value: 4.8
+    unit: "standard deviations"
+    citation:
+      arxiv: "1808.08242"
+      locator: "Abstract sentence 4 (significance)"
+    excerpt: excerpts/significance.yaml
+    context:
+      experiment: CMS
+      process: VH
+      combination: Run1_and_Run2_VH
+    review:
+      source: declared
+      evidence: retrieved
+      value: matched
+      interpretation: pending
+
+  - id: vhbb.vh.mu
+    kind: number
+    origin: measurement
+    statement: "The corresponding combined VH signal strength was 1.01 with an uncertainty of 0.22."
+    value: 1.01
+    citation:
+      arxiv: "1808.08242"
+      locator: "Abstract sentence 4 (signal strength)"
+    excerpt: excerpts/mu.yaml
+    context:
+      experiment: CMS
+      process: VH
+      uncertainty: 0.22
+    review:
+      source: declared
+      evidence: retrieved
+      value: matched
+      interpretation: pending
+
+  - id: vhbb.hbb.diagram
+    kind: diagram
+    origin: theory
+    statement: "The explanatory H-to-bb topology contains the H b bbar interaction."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Section 1"
+    excerpt: excerpts/theory-hbb.yaml
+    context:
+      model: SM
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vhbb.wh.diagram
+    kind: diagram
+    origin: theory
+    statement: "The explanatory WH topology contains q qbar-prime W, W W H, and H b bbar vertices."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Sections 1 and 3"
+    excerpt: excerpts/theory-wh.yaml
+    context:
+      model: SM
+      process: WH
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vhbb.zh.diagram
+    kind: diagram
+    origin: theory
+    statement: "The explanatory ZH topology contains q qbar Z, Z Z H, and H b bbar vertices."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Sections 1 and 3"
+    excerpt: excerpts/theory-zh.yaml
+    context:
+      model: SM
+      process: ZH
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
