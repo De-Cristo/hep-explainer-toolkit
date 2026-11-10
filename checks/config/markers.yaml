@@ -1,0 +1,146 @@
+# Marker list for the confidentiality gate.
+# Edit this file to change what is flagged. Phrases are matched
+# case-insensitively, with any whitespace between the words.
+# severity: fail or warn.
+# allowable: true means the marker fails unless the project passes
+# --allow-marker <id> or lists that id in confidentiality-allow.yaml.
+
+version: 1
+max_file_bytes: 80000000
+
+exclude_dir_names:
+  - upstream
+  - node_modules
+  - __pycache__
+  - media
+  - .venv
+  - venv
+
+# Not scanned. Test fixtures contain the markers on purpose, and this
+# file quotes them. Do not put a real deck on these paths.
+skip_paths:
+  - checks/config
+  - checks/tests
+  - upstream
+
+# Scanned, but hits are exemptions. These files name the markers because
+# they document the gate. A deck must not be added to this list.
+exempt_paths:
+  - INVENTORY.md
+  - plots/README.md
+  - checks/README.md
+
+text_extensions:
+  - .html
+  - .htm
+  - .md
+  - .markdown
+  - .txt
+  - .svg
+  - .json
+  - .yaml
+  - .yml
+  - .tex
+  - .rst
+  - .csv
+  - .xml
+  - .srt
+  - .vtt
+  - .css
+  - .js
+
+image_extensions:
+  - .png
+  - .jpg
+  - .jpeg
+  - .gif
+  - .webp
+
+pdf_extensions:
+  - .pdf
+
+rules:
+  - id: cms_private_work
+    severity: fail
+    patterns:
+      - "CMS Private Work"
+      - "CMS Private"
+      - "Private Work"
+      - "Private work"
+  - id: cms_internal
+    severity: fail
+    patterns:
+      - "CMS Internal"
+      - "CMS Internal Note"
+      - "internal note"
+  - id: work_in_progress
+    severity: fail
+    allowable: true
+    patterns:
+      - "Work in progress"
+      - "Work in Progress"
+      - "Work-in-progress"
+      - "Work-in-Progress"
+  - id: preliminary
+    severity: warn
+    patterns:
+      - "CMS Preliminary"
+      - "Preliminary"
+  - id: analysis_note
+    severity: fail
+    regex: '(?<![A-Za-z0-9])(?:CMS[\s-]*)?AN[\s-]*\d{2,4}[\s/\-]\d{2,4}(?!\d)'
+  - id: detector_note
+    severity: fail
+    regex: '(?<![A-Za-z0-9])(?:CMS[\s-]*)?DN[\s-]*\d{2,4}[\s/\-]\d{2,4}(?!\d)'
+
+# CADI-style codes such as HIG-21-009. A code is not a failure when the
+# same file contains a public id for that same code (CMS-PAS-..., CMS-...),
+# or when confidentiality-allow.yaml lists it with a public reference.
+cadi:
+  severity: fail
+  groups:
+    - B2G
+    - BPH
+    - BTV
+    - EGM
+    - EXO
+    - FSQ
+    - FTR
+    - FWD
+    - GEN
+    - HIG
+    - HIN
+    - JME
+    - LUM
+    - MUO
+    - SMP
+    - SUS
+    - TAU
+    - TOP
+    - TRK
+  public_id_templates:
+    - "CMS-PAS-{code}"
+    - "CMS PAS {code}"
+    - "PAS-{code}"
+    - "PAS {code}"
+    - "CMS-{code}"
+    - "CMS {code}"
+
+# Private CMS web locations. A normal indico.cern.ch/event/<id> URL is not
+# in this list: it looks the same for a public conference and a restricted one.
+urls:
+  - id: twiki_viewauth
+    severity: fail
+    regex: 'https?://twiki\.cern\.ch/twiki/bin/viewauth/\S+'
+  - id: twiki_cms_web
+    severity: fail
+    regex: 'https?://twiki\.cern\.ch/twiki/bin/view/CMS(?!Public\b)\S*'
+  - id: cms_cern_ch
+    severity: fail
+    regex: 'https?://(?:[A-Za-z0-9.-]+\.)?cms\.cern\.ch/\S+'
+  - id: cms_docdb
+    severity: fail
+    regex: 'https?://cms-docdb\.cern\.ch/\S+'
+  - id: indico_private
+    severity: fail
+    regex: 'https?://indico\.cern\.ch/\S*(?:/manage\b|/edit\b|/review\b|protection|[?&]access=private|[?&]showSession=private)'

@@ -1,0 +1,10 @@
+# TOY datacard. Not a real CMS analysis.
+imax 1
+jmax 0
+kmax 0
+bin toybin
+observation 10
+bin toybin
+process toysignal
+process 0
+rate 0.42

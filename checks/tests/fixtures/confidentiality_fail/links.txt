@@ -1,0 +1,7 @@
+TOY links. These URLs are fake and do not point at a real page.
+
+https://twiki.cern.ch/twiki/bin/viewauth/CMS/ToyPrivate
+https://twiki.cern.ch/twiki/bin/view/CMS/ToyPrivatePage
+https://cms.cern.ch/iCMS/toy
+https://cms-docdb.cern.ch/cgi-bin/toy
+https://indico.cern.ch/event/1/manage

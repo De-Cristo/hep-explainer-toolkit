@@ -1,0 +1,39 @@
+# Default exemptions for the number traceability check.
+# A number is skipped only when one of these rules matches, and the
+# report names the rule. Set allow_defaults: false in a manifest to
+# ignore this file and supply your own allow list.
+#
+# These are not physics claims. They are chrome, citations, and software
+# versions. Tighten or delete a rule if a real result can hide in it.
+
+version: 1
+allow:
+  - id: slide_numbers
+    kind: slide_index
+    hints: [page_chrome, footer_page_mark]
+    patterns:
+      - '(?i)(?<![A-Za-z0-9])slide\s+\d+\b'
+      - '(?i)(?<![A-Za-z0-9])page\s+\d+\b'
+      - '(?i)(?<![A-Za-z0-9])slides?\s+\d+\s+of\s+\d+\b'
+  - id: years
+    kind: year
+    min: 1990
+    max: 2100
+  - id: urls
+    kind: context
+    patterns:
+      - 'https?://\S+'
+  - id: arxiv
+    kind: context
+    patterns:
+      - '(?i)arXiv:\s*\d{4}\.\d{4,5}'
+  - id: timestamps
+    kind: context
+    patterns:
+      - '(?<!\d)\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?(?!\d)'
+  - id: dotted_versions
+    kind: hints
+    hints: [version]
+  - id: fenced_code
+    kind: hints
+    hints: [fenced_code]

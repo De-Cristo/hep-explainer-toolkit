@@ -1,0 +1,9 @@
+TOY narration for a fake measurement. Not a CMS result.
+Slide 2.
+The toy mass is one point two plus or minus zero point zero five gigaelectronvolts.
+The toy collider energy is thirteen point six teraelectronvolts.
+Integrated toy luminosity is one hundred thirty-eight inverse femtobarns.
+The toy rate is zero point four two picobarns.
+That is twelve point five percent of the dummy benchmark.
+The toy yield is one point two times ten to the minus three.
+Recorded in two thousand twenty-four.

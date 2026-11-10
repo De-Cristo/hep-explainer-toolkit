@@ -1,0 +1,51 @@
+# TOY manifest. None of these values are real CMS results.
+# The narration deliberately says a different mass from this file.
+match:
+  rounding: half_up
+  absolute_tolerance: 0
+  relative_tolerance: 0
+
+sources:
+  - id: toy_mass
+    value: 1.2
+    uncertainty: 0.05
+    unit: GeV
+    source:
+      type: fit_json
+      path: toy_fit.json
+      key: mass
+      uncertainty_key: mass_unc
+  - id: toy_energy
+    value: 13.6
+    unit: TeV
+    source:
+      type: paper
+      arxiv: "0000.00000"
+      cds: CERN-EP-TOY-0001
+  - id: toy_lumi
+    value: 138
+    unit: "fb-1"
+    source:
+      type: hepdata
+      record: "https://www.hepdata.net/record/toy0001"
+      table: "Toy table"
+  - id: toy_rate
+    value: 0.42
+    unit: pb
+    source:
+      type: datacard
+      path: toy_datacard.txt
+      key: rate
+  - id: toy_fraction
+    value: 12.5
+    unit: "%"
+    source:
+      type: fit_json
+      path: toy_fit.json
+      key: fraction
+  - id: toy_yield
+    value: 1.2e-3
+    source:
+      type: fit_json
+      path: toy_fit.json
+      key: yield
