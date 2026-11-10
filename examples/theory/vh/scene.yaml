@@ -1,4 +1,5 @@
 title: "VH associated production"
+claim_registry: claims.yaml
 scenes:
   - id: wh
     narration: "A quark and an antiquark of different flavour annihilate into an off-shell W. That boson produces an on-shell W and a Higgs, which decays to a bottom quark and a bottom antiquark."
@@ -8,20 +9,11 @@ scenes:
       diagram: wh.yaml
     claims:
       - id: words
-        kind: claim
+        claim_ref: vh.wh.production
         text: "A quark and an antiquark of different flavour annihilate into an off-shell W. That boson produces an on-shell W and a Higgs, which decays to a bottom quark and a bottom antiquark."
-        citation:
-          arxiv: "hep-ph/0503172"
-          doi: "10.1016/j.physrep.2007.10.004"
-          locator: "Sections 1 and 3"
-        excerpt: excerpts/vh-wh.yaml
       - id: graph
-        kind: diagram
-        citation:
-          arxiv: "hep-ph/0503172"
-          doi: "10.1016/j.physrep.2007.10.004"
-          locator: "Sections 1 and 3"
-        excerpt: excerpts/vh-wh.yaml
+        claim_ref: vh.wh.diagram
+
   - id: zh
     narration: "For a Z the incoming quark and antiquark have the same flavour. The off-shell Z produces an on-shell Z and a Higgs, and the Higgs again decays to a bottom quark and a bottom antiquark."
     visual:
@@ -30,17 +22,7 @@ scenes:
       diagram: zh.yaml
     claims:
       - id: words
-        kind: claim
+        claim_ref: vh.zh.production
         text: "For a Z the incoming quark and antiquark have the same flavour. The off-shell Z produces an on-shell Z and a Higgs, and the Higgs again decays to a bottom quark and a bottom antiquark."
-        citation:
-          arxiv: "hep-ph/0503172"
-          doi: "10.1016/j.physrep.2007.10.004"
-          locator: "Sections 1 and 3"
-        excerpt: excerpts/vh-zh.yaml
       - id: graph
-        kind: diagram
-        citation:
-          arxiv: "hep-ph/0503172"
-          doi: "10.1016/j.physrep.2007.10.004"
-          locator: "Sections 1 and 3"
-        excerpt: excerpts/vh-zh.yaml
+        claim_ref: vh.zh.diagram

@@ -16,6 +16,8 @@ jobs:
           python-version: "3.12"
       - name: Unit tests
         run: python -m unittest discover -s checks/tests -t . -v
+      - name: Reusable claim registry example
+        run: python -m checks.claims check examples/theory/vh/claims.yaml
       - name: Confidentiality gate
         run: python -m checks.confidentiality scan .
       - name: Language lint

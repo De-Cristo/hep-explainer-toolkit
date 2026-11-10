@@ -10,6 +10,8 @@ For a new explanation, start with an audience/learning-goal brief before writing
 
 Renderers now declare an explicit render job: every slide, narration file, scene, visual asset, evidence file, and source manifest has a role. Validation follows those exact inputs rather than guessing from filenames, and the render seal includes the manifests plus local fit/datacard evidence. See `checks/renderjob.py`.
 
+Reusable scientific content can live in a project-local `claims.yaml`. Scenes reference stable claim IDs while keeping audience-specific wording local; `python3 -m checks.claims check CLAIMS.yaml --report build/claim-review.md` produces a review surface with separate source, evidence, value, and interpretation states.
+
 Development assistance and attribution are recorded in [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 > **This repository is public.** Never commit internal or unapproved CMS material. That includes plots, numbers, slides, and videos. The only figures, values, decks, and clips that may be added are approved public results, or toy and simulated examples. If a file is not clearly public, leave it out.
