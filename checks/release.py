@@ -82,12 +82,24 @@ def build_packet(
         if statuses[claim_id] not in {"approved", "embedded_reviewed"}:
             interpretation_failures.append(claim_id)
 
-    ready = (
+    review_ready = (
         storyboard.ok
         and not machine_failures
         and not interpretation_failures
-        and (not public or registry.visibility == "public")
         and (qa is None or int(qa.get("issues") or 0) == 0)
+    )
+    public_validation_error = None
+    if public:
+        try:
+            from checks.explanation import check_explanation
+            check_explanation(scene_path)
+        except (Exception, SystemExit) as exc:
+            public_validation_error = str(exc)
+    release_ready = (
+        public
+        and registry.visibility == "public"
+        and review_ready
+        and public_validation_error is None
     )
 
     out = Path(out)
@@ -103,7 +115,9 @@ def build_packet(
             machine_failures,
             interpretation_failures,
             qa,
-            ready,
+            review_ready,
+            release_ready,
+            public_validation_error,
         ),
         encoding="utf-8",
     )
@@ -116,7 +130,9 @@ def build_packet(
         "machine_failures": machine_failures,
         "interpretation_failures": interpretation_failures,
         "qa_issues": None if qa is None else int(qa.get("issues") or 0),
-        "release_ready": ready,
+        "review_ready": review_ready,
+        "public_validation_error": public_validation_error,
+        "release_ready": release_ready,
         "packet": str(out),
     }
     out.with_suffix(".json").write_text(
@@ -169,7 +185,9 @@ def _render_html(
     machine_failures: list[str],
     interpretation_failures: list[str],
     qa: dict | None,
-    ready: bool,
+    review_ready: bool,
+    release_ready: bool,
+    public_validation_error: str | None,
 ) -> str:
     scene_sections: list[str] = []
     for scene in document.get("scenes") or []:
@@ -252,13 +270,21 @@ def _render_html(
     failures.extend("interpretation review: " + item for item in interpretation_failures)
     if qa is not None and int(qa.get("issues") or 0):
         failures.append(f"visual QA: {int(qa.get('issues') or 0)} issue(s)")
-    status_html = (
-        "<p class='ready'>RELEASE READY</p>"
-        if ready
-        else "<p class='blocked'>REVIEW REQUIRED</p><ul>"
-        + "".join(f"<li>{html.escape(item)}</li>" for item in failures)
-        + "</ul>"
-    )
+    if public_validation_error:
+        failures.append("public renderer validation: " + public_validation_error)
+    if release_ready:
+        status_html = "<p class='ready'>PUBLIC RELEASE READY</p>"
+    elif review_ready:
+        status_html = (
+            "<p class='ready'>HUMAN REVIEW READY</p>"
+            "<p>This packet is not a public release approval.</p>"
+        )
+    else:
+        status_html = (
+            "<p class='blocked'>REVIEW REQUIRED</p><ul>"
+            + "".join(f"<li>{html.escape(item)}</li>" for item in failures)
+            + "</ul>"
+        )
     qa_html = ""
     if qa is not None:
         qa_html = (
@@ -324,11 +350,16 @@ def main(argv: list[str] | None = None) -> int:
     except (ReleaseError, OSError, YamlError) as exc:
         print(f"release packet: FAIL: {exc}", file=sys.stderr)
         return 1
-    print(
-        f"release packet: {'READY' if summary['release_ready'] else 'REVIEW REQUIRED'}; "
-        f"{summary['packet']}"
+    label = (
+        "PUBLIC RELEASE READY"
+        if summary["release_ready"]
+        else "HUMAN REVIEW READY"
+        if summary["review_ready"]
+        else "REVIEW REQUIRED"
     )
-    return 1 if args.strict and not summary["release_ready"] else 0
+    print(f"release packet: {label}; {summary['packet']}")
+    required_ready = summary["release_ready"] if args.public else summary["review_ready"]
+    return 1 if args.strict and not required_ready else 0
 
 
 if __name__ == "__main__":
