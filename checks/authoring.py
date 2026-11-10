@@ -527,6 +527,7 @@ def make_handoff(
         "scene": str(scene_path),
         "scene_sha256": sha256(scene_path),
         "registry": str(registry.path),
+        "registry_sha256": sha256(registry.path),
         "registry_visibility": registry.visibility,
         "reviews": str(reviews_path),
         "reviews_sha256": sha256(reviews_path),
@@ -535,12 +536,133 @@ def make_handoff(
         "comparisons": comparisons,
         "scenes": scenes,
     }
+    payload["payload_sha256"] = _handoff_payload_sha256(payload)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return payload
+
+
+def verify_handoff(path: Path) -> dict[str, object]:
+    """Refuse stale or manually altered approved-authoring handoffs."""
+    path = Path(path).resolve()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AuthoringError(f"cannot read handoff {path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise AuthoringError(f"{path}: handoff must be a mapping")
+    if payload.get("schema_version") != 1 or payload.get("kind") != "approved_authoring_handoff":
+        raise AuthoringError(f"{path}: unsupported handoff schema")
+
+    stored_payload_sha = str(payload.get("payload_sha256") or "")
+    if not re.fullmatch(r"[0-9a-f]{64}", stored_payload_sha):
+        raise AuthoringError(f"{path}: handoff is missing payload_sha256")
+    if stored_payload_sha != _handoff_payload_sha256(payload):
+        raise AuthoringError(f"{path}: handoff content changed after generation")
+
+    scene_path = Path(str(payload.get("scene") or ""))
+    registry_path = Path(str(payload.get("registry") or ""))
+    reviews_path = Path(str(payload.get("reviews") or ""))
+    for label, target in (
+        ("scene", scene_path),
+        ("registry", registry_path),
+        ("reviews", reviews_path),
+    ):
+        if not target.is_absolute() or not target.is_file():
+            raise AuthoringError(
+                f"{path}: {label} reference is missing or not an absolute existing file: {target}"
+            )
+
+    expected_hashes = {
+        "scene_sha256": sha256(scene_path),
+        "registry_sha256": sha256(registry_path),
+        "reviews_sha256": sha256(reviews_path),
+    }
+    for field, current in expected_hashes.items():
+        if str(payload.get(field) or "") != current:
+            raise AuthoringError(
+                f"{path}: {field.removesuffix('_sha256')} changed after handoff generation"
+            )
+
+    try:
+        scene_doc = load_yaml(scene_path.read_text(encoding="utf-8"))
+    except (OSError, YamlError) as exc:
+        raise AuthoringError(f"cannot read current scene {scene_path}: {exc}") from exc
+    if not isinstance(scene_doc, dict):
+        raise AuthoringError(f"{scene_path}: scene must be a mapping")
+    try:
+        storyboard = check_storyboard(scene_path)
+        registry = load_registry(registry_path)
+        reviews = load_reviews(reviews_path)
+    except (StoryboardError, ClaimRegistryError, ReviewError) as exc:
+        raise AuthoringError(str(exc)) from exc
+    if not storyboard.ok:
+        raise AuthoringError(
+            "storyboard changed into an invalid state: " + "; ".join(storyboard.problems)
+        )
+    if str(payload.get("registry_visibility") or "") != registry.visibility:
+        raise AuthoringError(f"{path}: registry visibility changed")
+
+    current_used = _used_claims(scene_doc)
+    raw_claims = payload.get("claims")
+    if not isinstance(raw_claims, list):
+        raise AuthoringError(f"{path}: claims must be a list")
+    stored_ids = [
+        str(item.get("id") or "")
+        for item in raw_claims
+        if isinstance(item, dict)
+    ]
+    if stored_ids != current_used:
+        raise AuthoringError(
+            f"{path}: storyboard claim set/order changed after handoff generation"
+        )
+
+    statuses = review_status(registry, reviews)
+    for raw in raw_claims:
+        if not isinstance(raw, dict):
+            raise AuthoringError(f"{path}: malformed claim payload")
+        claim_id = str(raw.get("id") or "")
+        current_status = statuses.get(claim_id)
+        if current_status not in {"approved", "embedded_reviewed"}:
+            raise AuthoringError(
+                f"{path}: {claim_id} is no longer approved ({current_status})"
+            )
+        if str(raw.get("digest") or "") != claim_digest(registry, claim_id):
+            raise AuthoringError(
+                f"{path}: {claim_id} scientific digest changed"
+            )
+        if str(raw.get("status") or "") != current_status:
+            raise AuthoringError(
+                f"{path}: {claim_id} stored review status no longer matches"
+            )
+
+    brief = payload.get("brief")
+    if brief is not None:
+        if not isinstance(brief, dict):
+            raise AuthoringError(f"{path}: brief payload must be a mapping or null")
+        raw_brief = str(scene_doc.get("brief") or "").strip()
+        if not raw_brief:
+            raise AuthoringError(f"{path}: scene no longer references a brief")
+        brief_path = _resolve_relative(scene_path.parent, raw_brief)
+        if str(brief.get("sha256") or "") != sha256(brief_path):
+            raise AuthoringError(f"{path}: authoring brief changed after handoff generation")
+
+    return payload
+
+
+def _handoff_payload_sha256(payload: dict[str, object]) -> str:
+    clean = dict(payload)
+    clean.pop("payload_sha256", None)
+    body = json.dumps(
+        clean,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
 def _candidate(
@@ -873,6 +995,12 @@ def main(argv: list[str] | None = None) -> int:
     handoff.add_argument("--reviews", type=Path, required=True)
     handoff.add_argument("--out", type=Path, required=True)
 
+    verify = sub.add_parser(
+        "verify-handoff",
+        help="refuse a stale or altered approved-authoring handoff",
+    )
+    verify.add_argument("handoff", type=Path)
+
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
@@ -915,6 +1043,13 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"promoted {args.candidate_id}; registry={registry}; "
                 f"excerpt={excerpt}; interpretation=pending"
+            )
+            return 0
+        if args.command == "verify-handoff":
+            payload = verify_handoff(args.handoff)
+            print(
+                f"approved authoring handoff: PASS; "
+                f"{len(payload['claims'])} claim(s), {len(payload['scenes'])} scene(s)"
             )
             return 0
         payload = make_handoff(args.scene, args.reviews, args.out)
