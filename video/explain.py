@@ -13,11 +13,10 @@ import json
 import sys
 from pathlib import Path
 
-from checks.claims import ClaimRegistryError, registry_dependencies
+from checks.claims import ClaimRegistryError
 from checks.diagrams import SceneError, load_diagram, resolve_drawing
-from checks.documents import document_from_lines
 from checks.finaltext import FinalTextError, assert_captions, seal_render_job
-from checks.renderjob import RenderInput, find_project_root, make_render_job
+from checks.renderjob import scene_render_job
 from checks.storyboard import (
     StoryboardError,
     check_storyboard,
@@ -67,14 +66,7 @@ def render_explanation(
         for _item, segments_for_scene in scene_segments
         for segment in segments_for_scene
     ]
-    job = make_render_job(
-        find_project_root(scene.parent),
-        _render_inputs(scene, document),
-        trace_documents=[
-            document_from_lines(scene.resolve(), "narration", narration_texts)
-        ],
-        scene_paths=[scene],
-    )
+    job = scene_render_job(scene, document)
     try:
         seal = seal_render_job(job)
         if document.get("brief"):
@@ -185,47 +177,6 @@ def render_explanation(
     )
     print(f"wrote {out}  video {video_s:.2f}s audio {audio_s:.2f}s")
     return summary
-
-
-def _render_inputs(scene: Path, document: dict) -> list[RenderInput]:
-    """Declare every file the scene renderer or its scientific checks read."""
-    inputs = [RenderInput(scene.resolve(), "scene")]
-    brief_raw = document.get("brief")
-    if brief_raw:
-        inputs.append(
-            RenderInput((scene.parent / str(brief_raw)).resolve(), "brief")
-        )
-    registry_raw = document.get("claim_registry")
-    if registry_raw:
-        registry_path = (scene.parent / str(registry_raw)).resolve()
-        for dependency in registry_dependencies(registry_path):
-            inputs.append(RenderInput(dependency, "evidence"))
-    for item in document["scenes"]:
-        visual = item.get("visual") or {}
-        raw_diagram = visual.get("diagram")
-        if raw_diagram:
-            inputs.append(
-                RenderInput((scene.parent / str(raw_diagram)).resolve(), "diagram")
-            )
-        raw_file = visual.get("file")
-        if raw_file:
-            inputs.append(
-                RenderInput((scene.parent / str(raw_file)).resolve(), "asset")
-            )
-        for claim in item.get("claims") or []:
-            raw = claim.get("excerpt")
-            if raw:
-                inputs.append(
-                    RenderInput((scene.parent / str(raw)).resolve(), "evidence")
-                )
-    unique: list[RenderInput] = []
-    seen: set[Path] = set()
-    for item in inputs:
-        path = item.path.resolve()
-        if path not in seen:
-            seen.add(path)
-            unique.append(RenderInput(path, item.role))
-    return unique
 
 
 def _picture_for_segment(
