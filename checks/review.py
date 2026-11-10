@@ -11,7 +11,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -135,14 +137,17 @@ def strict_ready(registry: ClaimRegistry, reviews: dict[str, object]) -> bool:
     return True
 
 
-def approve(
+def decide(
     registry: ClaimRegistry,
     reviews: dict[str, object],
     claim_id: str,
     reviewer: str,
     note: str,
+    decision: str,
 ) -> None:
     registry.get(claim_id)
+    if decision not in {"approved", "rejected"}:
+        raise ReviewError("decision must be approved or rejected")
     reviewer = reviewer.strip()
     if not reviewer:
         raise ReviewError("reviewer must be non-empty")
@@ -153,11 +158,31 @@ def approve(
         raise ReviewError(f"review entry for {claim_id} is not a mapping")
     entry.update({
         "digest": claim_digest(registry, claim_id),
-        "decision": "approved",
+        "decision": decision,
         "reviewer": reviewer,
         "reviewed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "note": note.strip(),
     })
+
+
+def approve(
+    registry: ClaimRegistry,
+    reviews: dict[str, object],
+    claim_id: str,
+    reviewer: str,
+    note: str,
+) -> None:
+    decide(registry, reviews, claim_id, reviewer, note, "approved")
+
+
+def reject(
+    registry: ClaimRegistry,
+    reviews: dict[str, object],
+    claim_id: str,
+    reviewer: str,
+    note: str,
+) -> None:
+    decide(registry, reviews, claim_id, reviewer, note, "rejected")
 
 
 def format_status(registry: ClaimRegistry, reviews: dict[str, object]) -> str:
@@ -186,8 +211,24 @@ def _sha256(path: Path) -> str:
 
 
 def _write_json(path: Path, data: dict[str, object]) -> None:
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    text = json.dumps(data, indent=2, sort_keys=True) + "\n"
+    fd, raw_tmp = tempfile.mkstemp(
+        prefix=path.name + ".",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    tmp = Path(raw_tmp)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -210,6 +251,13 @@ def main(argv: list[str] | None = None) -> int:
     approve_cmd.add_argument("--reviewer", required=True)
     approve_cmd.add_argument("--note", default="")
 
+    reject_cmd = sub.add_parser("reject", help="record one explicit human rejection")
+    reject_cmd.add_argument("registry", type=Path)
+    reject_cmd.add_argument("reviews", type=Path)
+    reject_cmd.add_argument("claim_id")
+    reject_cmd.add_argument("--reviewer", required=True)
+    reject_cmd.add_argument("--note", default="")
+
     args = parser.parse_args(argv)
     try:
         registry = load_registry(args.registry)
@@ -222,6 +270,11 @@ def main(argv: list[str] | None = None) -> int:
             approve(registry, reviews, args.claim_id, args.reviewer, args.note)
             _write_json(args.reviews, reviews)
             print(f"approved {args.claim_id} as {args.reviewer}")
+            return 0
+        if args.command == "reject":
+            reject(registry, reviews, args.claim_id, args.reviewer, args.note)
+            _write_json(args.reviews, reviews)
+            print(f"rejected {args.claim_id} as {args.reviewer}")
             return 0
         text = format_status(registry, reviews)
         print(text, end="")
