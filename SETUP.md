@@ -19,11 +19,21 @@ sudo apt-get install -y ffmpeg espeak-ng libcairo2-dev libpango1.0-dev pkg-confi
 | `libcairo2-dev`, `libpango1.0-dev`, `pkg-config`, `build-essential` | `pycairo` 1.29.2 and `manimpango` 0.7.1 have no Linux wheels at these pins, so pip builds them. |
 | Python headers | `pycairo`'s build looks up a `python` pkg-config module. A [uv-managed CPython](https://docs.astral.sh/uv/concepts/python-versions/) ships the headers. A distro CPython needs `python3.12-dev` as well. |
 
-`env/setup.sh` checks that `ffmpeg` and `espeak-ng` are on `PATH`. It does not run `sudo`. If either command is missing it prints the `apt-get` line above and exits non-zero after the virtualenv install.
+`env/setup.sh` checks that `ffmpeg` and `espeak-ng` are on `PATH`. It does not run `sudo`. If either command is missing it prints the `apt-get` line above and exits non-zero after the virtualenv install. A missing `latex` or `dvisvgm` prints a warning and the script still succeeds.
 
 Node.js 20 or newer is required for the slide engine and Playwright. The tested version is Node 20.19.2. `env/setup.sh` does not install Node. Distro `nodejs` packages are often older than 20, so install Node 20+ from Node's own distribution or a version manager.
 
-LaTeX is optional. Manim needs it only for `Tex` and `MathTex`. v0.1 does not need a TeX install.
+### LaTeX
+
+LaTeX is recommended for animations. Manim `MathTex` and `Tex` fail without it, and HEP narration slides need math such as μ, fb⁻¹, and J/ψ. Manim `Text` uses Pango and works without LaTeX.
+
+These Debian/Ubuntu package names were checked against the archive. `texlive-latex-base` pulls in `texlive-binaries`, which provides the `latex` command. `texlive-latex-extra` depends on `texlive-latex-recommended`, which includes amsmath. `dvisvgm` is the converter Manim uses for math scenes. `cm-super` supplies Type 1 Computer Modern fonts so the glyphs are not bitmaps.
+
+```bash
+sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended dvisvgm cm-super
+```
+
+`env/setup.sh` warns when `latex` or `dvisvgm` is missing and does not fail the run.
 
 ### Versions confirmed on Debian 13
 
@@ -53,6 +63,7 @@ Direct dependencies are declared in `env/requirements.in`. `env/requirements.txt
 | soundfile | 0.14.0 |
 | pyyaml | 6.0.3 |
 | torch | 2.15.0+cpu |
+| en_core_web_sm | 3.8.0, GitHub wheel URL in the lock (spaCy `>=3.8.0,<3.9.0`, matches spaCy 3.8.18) |
 | manim-voiceover | 0.4.0 in the lock; unpinned in `requirements.in` |
 | uproot | 5.7.7 in the lock; unpinned in `requirements.in` |
 
@@ -69,7 +80,7 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then from
 source .venv/bin/activate
 ```
 
-The script is safe to run again. It runs `uv venv --python 3.12` (reusing an existing 3.12 `.venv`, replacing any other interpreter) and installs `env/requirements.txt` with uv. A re-run prints the installed `manim`, `kokoro`, and `torch` versions.
+The script is safe to run again. It runs `uv venv --python 3.12` (reusing an existing 3.12 `.venv`, replacing any other interpreter) and installs `env/requirements.txt` with uv. A re-run prints the installed `manim`, `kokoro`, and `torch` versions and imports `en_core_web_sm`.
 
 uv will download a CPython 3.12 build if the machine does not already have one. Prefer that managed interpreter: it includes the headers `pycairo` needs. If `uv venv --python 3.12` selects a distro interpreter and the `pycairo` build then fails, see Troubleshooting.
 
@@ -93,7 +104,7 @@ The same index still hosts old copies of unrelated projects (`certifi`, `tqdm`, 
 
 Kokoro downloads its checkpoint and voice files on first use through `huggingface_hub`, from `hexgrad/Kokoro-82M` (`config.json`, `kokoro-v1_0.pth`, and `voices/<name>.pt`). They land in the Hugging Face cache, usually `~/.cache/huggingface`, which is outside this repository. Do not copy them into the tree. Do not commit them.
 
-misaki's English pipeline downloads the spaCy model `en_core_web_sm` the same way, on first use. Leave that in the spaCy/Hugging Face download locations too. The confirmed freeze listed that model as a GitHub wheel URL; it is a runtime download, so the lock does not pin it.
+Kokoro and misaki also need spaCy's English model `en_core_web_sm` at runtime. That model is not a Hugging Face download. `env/requirements.txt` pins the 3.8.0 wheel from the spaCy models GitHub release, the same URL and sha256 as the confirmed freeze, which matches the locked spaCy 3.8.18 (`>=3.8.0,<3.9.0`). `env/setup.sh` imports `en_core_web_sm` after install. The wheel is installed inside `.venv`. Do not commit it.
 
 `.gitignore` ignores `.venv/`. The virtualenv is local state.
 
