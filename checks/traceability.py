@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
-from checks.documents import discover, load_document
+from checks.documents import Document, discover, load_document
 from checks.numbers import (
     NumberHit,
     canonical_unit,
@@ -169,6 +169,16 @@ def check(
 ) -> TraceReport:
     manifest = load_manifest(manifest_path)
     documents = _documents(root, manifest, inputs=inputs)
+    return _check_documents(manifest, documents)
+
+
+def check_documents(manifest_path: Path, documents: list[Document] | tuple[Document, ...]) -> TraceReport:
+    """Trace numbers in text that a renderer has already parsed."""
+    manifest = load_manifest(manifest_path)
+    return _check_documents(manifest, list(documents))
+
+
+def _check_documents(manifest: Manifest, documents: list[Document]) -> TraceReport:
     exemptions: list[Exemption] = []
     matches: list[Match] = []
     failures: list[Unmatched] = []

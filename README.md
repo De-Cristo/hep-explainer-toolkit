@@ -8,6 +8,10 @@ Turn public high-energy physics results into professional slides, animations, sh
 
 For a new explanation, start with an audience/learning-goal brief before writing slides or narration. `python3 -m checks.brief check BRIEF.yaml` validates that the audience, prerequisites, concepts to introduce, purpose, medium, and learning goal are explicit. See `examples/briefs/vhbb-undergraduate.yaml` and [AGENTS.md](AGENTS.md).
 
+Renderers now declare an explicit render job: every slide, narration file, scene, visual asset, evidence file, and source manifest has a role. Validation follows those exact inputs rather than guessing from filenames, and the render seal includes the manifests plus local fit/datacard evidence. See `checks/renderjob.py`.
+
+Development assistance and attribution are recorded in [CONTRIBUTORS.md](CONTRIBUTORS.md).
+
 > **This repository is public.** Never commit internal or unapproved CMS material. That includes plots, numbers, slides, and videos. The only figures, values, decks, and clips that may be added are approved public results, or toy and simulated examples. If a file is not clearly public, leave it out.
 
 The project's own licence has not been chosen yet. There is no `LICENSE` file in this repository until the owner picks one. Each upstream project keeps the licence noted below; those licences do not licence this repository.

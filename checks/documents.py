@@ -167,6 +167,22 @@ def _narration_yaml(path: str, raw: str) -> Document:
         regions.append(Region(cursor, cursor + len(text), start_line, frozenset()))
         cursor += len(text)
     return Document(path, "narration", "".join(pieces), regions)
+def document_from_lines(path: Path | str, kind: str, lines: list[str] | tuple[str, ...]) -> Document:
+    """Build a traceability document from text already parsed by a renderer."""
+    clean = [str(line).strip() for line in lines if str(line).strip()]
+    text = "\n".join(clean)
+    regions: list[Region] = []
+    cursor = 0
+    for line_number, line in enumerate(clean, 1):
+        regions.append(
+            Region(cursor, cursor + len(line), line_number, frozenset())
+        )
+        cursor += len(line)
+        if line_number != len(clean):
+            cursor += 1
+    return Document(str(path), kind, text, regions)
+
+
 def _plain(path: str, kind: str, text: str, *, hints_for_lines: bool) -> Document:
     regions: list[Region] = []
     cursor = 0

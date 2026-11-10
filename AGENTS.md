@@ -110,7 +110,9 @@ Narration, slide text, and an optional web report follow the language skills in 
 
 The language and style pass happens first. Number trace, provenance, and the citation and diagram checks run only after that, and only on the narration and slide files that will be rendered. They never run on a pre-rewrite draft.
 
-`video/pipeline.py` enforces this. It hashes the slide file and the narration file, runs `checks.language` on those bytes, and only then runs provenance, number trace, and `checks.diagrams` when a `scene.yaml` is beside the deck. Captions are taken from that sealed narration. If either file's sha256 differs from the hash the checks saw, the render stops.
+The renderers enforce this through `checks.renderjob.RenderJob`. They declare the role of every input instead of asking checkers to infer roles from filenames. The deck renderer parses narration once, then passes that same cue text to number traceability, captions, and TTS. The scene renderer does the same for scene narration. The seal covers render inputs, `sources.yaml`, and local fit/datacard evidence read by the number checker. If any sealed byte changes after validation, rendering stops.
+
+Slide and narration inputs always require a public provenance declaration. Visual assets used directly by a scene do too. Metadata such as an in-repository scene spec or excerpt is validated by its dedicated checks; if such a file is supplied from outside the project root, it also requires explicit provenance. Moving a file or renaming it must never weaken a check.
 
 Do the same by hand when you are not using that command: finish the two language skills, write the polished files, then run the checks on those paths. Do not check a draft and render a rewrite.
 

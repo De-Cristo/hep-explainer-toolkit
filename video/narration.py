@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from checks.documents import Document, document_from_lines
+
 
 @dataclass(frozen=True)
 class Cue:
@@ -87,6 +89,14 @@ def load_script(path: Path) -> Script:
         path=path,
     )
 
+
+def script_document(script: Script) -> Document:
+    """Trace exactly the cue text parsed for captions and TTS."""
+    return document_from_lines(
+        script.path.resolve(),
+        "narration",
+        [cue.text for cue in script.steps],
+    )
 
 def check_against_deck(script: Script, states: list[tuple[int, int]]) -> None:
     """Require the narration to list exactly the deck's walk, in that order."""

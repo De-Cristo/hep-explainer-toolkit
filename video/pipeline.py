@@ -6,7 +6,9 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from checks.finaltext import FinalTextError, assert_captions, seal_for_render
+from checks.documents import load_document
+from checks.finaltext import FinalTextError, assert_captions, seal_render_job
+from checks.renderjob import RenderInput, make_render_job
 from video.deck import load_deck, resolve_deck_inputs, walk_states
 from video.lexicon import apply_lexicon, load_lexicon
 from video.mux import (
@@ -18,7 +20,7 @@ from video.mux import (
     assert_av_sync,
     hold_frames,
 )
-from video.narration import Script, check_against_deck, load_script
+from video.narration import Script, check_against_deck, load_script, script_document
 from video.record import RecorderAbort, capture, record_stills
 from video.srt import write_srt
 from video.threads import apply_thread_limit
@@ -63,12 +65,21 @@ def render(
     """
     apply_thread_limit(threads)
     html_path, narration_path = resolve_deck_inputs(Path(deck), Path(narration) if narration else None)
-    try:
-        seal = seal_for_render(html_path, narration_path)
-    except FinalTextError as exc:
-        raise SystemExit(str(exc)) from exc
     script: Script = load_script(narration_path)
+    trace_documents = [
+        *load_document(html_path, "slide"),
+        script_document(script),
+    ]
+    job = make_render_job(
+        html_path.parent,
+        [
+            RenderInput(html_path, "slide"),
+            RenderInput(narration_path, "narration"),
+        ],
+        trace_documents=trace_documents,
+    )
     try:
+        seal = seal_render_job(job)
         seal.assert_unchanged()
         assert_captions(narration_path, [cue.text for cue in script.steps], seal)
     except FinalTextError as exc:

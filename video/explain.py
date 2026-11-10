@@ -14,7 +14,9 @@ import sys
 from pathlib import Path
 
 from checks.diagrams import SceneError
-from checks.finaltext import FinalTextError, assert_captions, run_ordered_checks
+from checks.documents import document_from_lines
+from checks.finaltext import FinalTextError, assert_captions, seal_render_job
+from checks.renderjob import RenderInput, make_render_job
 from checks.yamlsubset import YamlError, load as load_yaml
 from diagrams.render import render_equation, render_figure
 from video.lexicon import apply_lexicon, load_lexicon
@@ -51,13 +53,21 @@ def render_explanation(
     document = load_yaml(scene.read_text(encoding="utf-8"))
     if not isinstance(document, dict) or not document.get("scenes"):
         raise SystemExit(f"{scene} needs a scenes list")
+    narrations = [
+        " ".join(str(item.get("narration") or "").split())
+        for item in document["scenes"]
+    ]
+    job = make_render_job(
+        scene.parent,
+        _render_inputs(scene, document),
+        trace_documents=[
+            document_from_lines(scene.resolve(), "narration", narrations)
+        ],
+        scene_paths=[scene],
+    )
     try:
-        seal = run_ordered_checks(scene.parent, _final_paths(scene, document))
-        assert_captions(
-            scene,
-            [" ".join(str(item.get("narration") or "").split()) for item in document["scenes"]],
-            seal,
-        )
+        seal = seal_render_job(job)
+        assert_captions(scene, narrations, seal)
     except FinalTextError as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -139,25 +149,34 @@ def render_explanation(
     return summary
 
 
-def _final_paths(scene: Path, document: dict) -> list[Path]:
-    """Scene file plus the diagrams and excerpts the checks and the render read."""
-    paths = [scene.resolve()]
+def _render_inputs(scene: Path, document: dict) -> list[RenderInput]:
+    """Declare every file the scene renderer or its scientific checks read."""
+    inputs = [RenderInput(scene.resolve(), "scene")]
     for item in document["scenes"]:
         visual = item.get("visual") or {}
-        for key in ("diagram", "file"):
-            raw = visual.get(key)
-            if raw:
-                paths.append((scene.parent / str(raw)).resolve())
+        raw_diagram = visual.get("diagram")
+        if raw_diagram:
+            inputs.append(
+                RenderInput((scene.parent / str(raw_diagram)).resolve(), "diagram")
+            )
+        raw_file = visual.get("file")
+        if raw_file:
+            inputs.append(
+                RenderInput((scene.parent / str(raw_file)).resolve(), "asset")
+            )
         for claim in item.get("claims") or []:
             raw = claim.get("excerpt")
             if raw:
-                paths.append((scene.parent / str(raw)).resolve())
-    unique: list[Path] = []
+                inputs.append(
+                    RenderInput((scene.parent / str(raw)).resolve(), "evidence")
+                )
+    unique: list[RenderInput] = []
     seen: set[Path] = set()
-    for path in paths:
+    for item in inputs:
+        path = item.path.resolve()
         if path not in seen:
             seen.add(path)
-            unique.append(path)
+            unique.append(RenderInput(path, item.role))
     return unique
 
 
