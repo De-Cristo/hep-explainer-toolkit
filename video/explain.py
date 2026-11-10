@@ -13,6 +13,7 @@ import json
 import sys
 from pathlib import Path
 
+from checks.claims import ClaimRegistryError, registry_dependencies
 from checks.diagrams import SceneError
 from checks.documents import document_from_lines
 from checks.finaltext import FinalTextError, assert_captions, seal_render_job
@@ -152,6 +153,11 @@ def render_explanation(
 def _render_inputs(scene: Path, document: dict) -> list[RenderInput]:
     """Declare every file the scene renderer or its scientific checks read."""
     inputs = [RenderInput(scene.resolve(), "scene")]
+    registry_raw = document.get("claim_registry")
+    if registry_raw:
+        registry_path = (scene.parent / str(registry_raw)).resolve()
+        for dependency in registry_dependencies(registry_path):
+            inputs.append(RenderInput(dependency, "evidence"))
     for item in document["scenes"]:
         visual = item.get("visual") or {}
         raw_diagram = visual.get("diagram")
@@ -229,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
             args.scene, args.out,
             threads=args.threads, voice=args.voice, work_dir=args.work_dir,
         )
-    except (SceneError, YamlError, SystemExit) as exc:
+    except (ClaimRegistryError, SceneError, YamlError, SystemExit) as exc:
         if isinstance(exc, SystemExit):
             if isinstance(exc.code, str):
                 print(exc.code, file=sys.stderr)
