@@ -120,6 +120,8 @@ pytest video/tests -q
 
 `test_pipeline.py` uses a generated tone instead of Kokoro and checks that video, audio, and the timeline match within 0.2s, that a `mov_text` track is present, and that burn-in darkens only the bottom band. `test_smoke.py` runs real Kokoro. Set `HEP_SKIP_SMOKE=1` to skip that download.
 
+`test_explain_integration.py` builds a complete scene MP4 with a generated PNG and synthetic WAV. CI installs only PyYAML and soundfile for this test; it does not download Kokoro weights or launch a browser.
+
 ### Known gaps
 
 - `recordVideo` is attempted, and a drifted or aborted take is replaced by stills. The stills path does not play the engine's 0.45s fade.
@@ -128,4 +130,6 @@ pytest video/tests -q
 - The phonemizer sometimes glues a function word to the next one ("has not" shows up as one token). The waveform still says the phrase; the phoneme string in `.timings.json` is the place you will see it.
 - English (`en-us`) only. The voice default is `af_sarah`.
 - MathJax and webfonts on a real deck are waited on for a few seconds, then the frame is taken anyway. The toy deck has those CDN tags removed so it renders offline.
-- No Manim, no paper-to-video mode, no claim checker, no CMS approval label, no Indico / CDS / YouTube package. Those stay in `anim/`, `checks/`, and the notes above.
+- Manim remains available for uncued build scenes. Semantic diagram cues currently use deterministic progressive still states rather than arbitrary cue-controlled Manim actions.
+- Reusable claim checking, audience briefs, storyboards, and renderer-equivalent check-only validation are implemented in `checks/`. General paper-to-video ingestion is not.
+- No CMS approval-label workflow or Indico / CDS / YouTube publication package yet.

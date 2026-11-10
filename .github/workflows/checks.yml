@@ -20,7 +20,22 @@ jobs:
         run: python -m checks.claims check examples/theory/vh/claims.yaml
       - name: Audience-linked storyboard example
         run: python -m checks.storyboard check examples/theory/vh/scene.yaml
+      - name: VHbb shared scientific claims
+        run: python -m checks.claims check examples/vhbb/claims.yaml
+      - name: VHbb audience benchmark
+        run: |
+          python -m checks.explanation examples/vhbb/scenes/public.yaml
+          python -m checks.explanation examples/vhbb/scenes/student.yaml
+          python -m checks.explanation examples/vhbb/scenes/specialist.yaml
       - name: Confidentiality gate
         run: python -m checks.confidentiality scan .
       - name: Language lint
         run: python -m checks.language scan .
+      - name: Install ffmpeg for synthetic render smoke
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Install lightweight render-smoke dependencies
+        run: python -m pip install --disable-pip-version-check pyyaml==6.0.3 soundfile==0.14.0
+      - name: Synthetic scene render
+        run: python -m unittest discover -s video/tests -p "test_explain_integration.py" -v

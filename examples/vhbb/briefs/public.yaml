@@ -1,0 +1,23 @@
+topic: "Why produce the Higgs with a W or Z when studying H to bb?"
+
+audience:
+  profile: general_public
+  knows:
+    - particles
+  introduce:
+    - higgs_to_bottom
+    - associated_production
+    - event_tag
+
+purpose: explain_analysis_strategy
+medium: video
+duration_minutes: 2
+
+learning_goal: "Explain how an accompanying W or Z gives extra information for identifying H-to-bb candidates."
+
+required_distinctions:
+  - "The accompanying W or Z is part of the production process; it is not a decay product of the Higgs."
+
+avoid:
+  - "Do not imply that one illustrative event is evidence for a measured signal."
+  - "Do not describe the Feynman diagram as a literal movie of microscopic time evolution."

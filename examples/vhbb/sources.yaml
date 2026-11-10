@@ -1,0 +1,39 @@
+sources:
+  - id: category_zero
+    value: 0
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: category_one
+    value: 1
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: category_two
+    value: 2
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: lumi_2017
+    value: 41.3
+    unit: "fb-1"
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: energy_2017
+    value: 13
+    unit: TeV
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: vh_significance
+    value: 4.8
+    source:
+      type: paper
+      arxiv: "1808.08242"
+  - id: vh_mu
+    value: 1.01
+    uncertainty: 0.22
+    source:
+      type: paper
+      arxiv: "1808.08242"

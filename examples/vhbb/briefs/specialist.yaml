@@ -1,0 +1,27 @@
+topic: "Scope and quantitative result of the CMS VH H-to-bb observation"
+
+audience:
+  profile: hep_specialist
+  knows:
+    - associated_production
+    - H_to_bb
+    - b_tagging
+    - signal_strength
+  introduce:
+    - analysis_categories
+    - dataset_scope
+    - vh_result_scope
+
+purpose: summarize_public_result
+medium: video
+duration_minutes: 3
+
+learning_goal: "State the VH H-to-bb channel structure, dataset scope, and quantitative combined-VH result without conflating it with broader H-to-bb combinations."
+
+required_distinctions:
+  - "The zero-, one-, and two-lepton labels describe analysis final states, not Higgs branching fractions."
+  - "The quoted 4.8-standard-deviation result is for the combined VH measurements."
+
+avoid:
+  - "Do not quote the 4.8-standard-deviation VH result as the all-production-mode H-to-bb significance."
+  - "Do not omit the dataset energy when quoting the 2017 luminosity."

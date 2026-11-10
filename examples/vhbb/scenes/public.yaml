@@ -1,0 +1,64 @@
+title: "Why an accompanying boson helps reveal H to bb"
+brief: ../briefs/public.yaml
+claim_registry: ../claims.yaml
+scenes:
+  - id: target_decay
+    question: "What decay are we trying to recognize?"
+    takeaway: "The target is the Higgs coupling to a bottom-quark pair."
+    requires:
+      - particles
+    introduces:
+      - higgs_to_bottom
+    visual_purpose: "Show only the target Higgs decay before adding production information."
+    why_next: "The decay target alone does not explain why associated production is useful."
+    narration: "The target decay is a Higgs boson producing a bottom quark and a bottom antiquark."
+    visual:
+      kind: diagram
+      motion: still
+      diagram: ../diagrams/hbb.yaml
+    claims:
+      - id: decay_words
+        claim_ref: vhbb.hbb.decay
+        text: "The target decay is a Higgs boson producing a bottom quark and a bottom antiquark."
+      - id: decay_graph
+        claim_ref: vhbb.hbb.diagram
+
+  - id: associated_tag
+    question: "What extra information does associated production provide?"
+    takeaway: "The accompanying vector boson adds production information that can help identify candidate events."
+    requires:
+      - higgs_to_bottom
+    introduces:
+      - associated_production
+      - event_tag
+    covers_distinctions:
+      - "The accompanying W or Z is part of the production process; it is not a decay product of the Higgs."
+    visual_purpose: "Reveal the associated-production part first, then attach the H-to-bb decay."
+    narration:
+      - cue: production
+        text: "In the CMS observation, the main contribution came from Higgs bosons produced with a W or Z boson."
+      - cue: complete
+        text: "The W or Z belongs to the production process; the Higgs still supplies the bottom-quark pair."
+    visual:
+      kind: diagram
+      motion: still
+      diagram: ../diagrams/zh.yaml
+      cues:
+        - id: production
+          show_lines:
+            - q_in
+            - qbar_in
+            - zstar
+            - z_out
+            - higgs
+        - id: complete
+          show_lines: all
+    claims:
+      - id: strategy_words
+        claim_ref: vhbb.strategy.vh
+        text: "In the CMS observation, the main contribution came from Higgs bosons produced with a W or Z boson."
+      - id: separation_words
+        claim_ref: vhbb.production.separation
+        text: "The W or Z belongs to the production process; the Higgs still supplies the bottom-quark pair."
+      - id: topology_graph
+        claim_ref: vhbb.zh.diagram

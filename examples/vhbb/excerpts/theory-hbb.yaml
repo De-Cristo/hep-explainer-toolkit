@@ -1,0 +1,6 @@
+arxiv: "hep-ph/0503172"
+doi: "10.1016/j.physrep.2007.10.004"
+locator: "Section 1"
+quote: "The Higgs-fermion coupling is g_Hff = i m_f / v."
+vertices:
+  - ["H", "b", "bbar"]

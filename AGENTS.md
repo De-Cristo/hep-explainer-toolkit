@@ -261,6 +261,7 @@ Use this when the request is a web blog or a web report, not a talk. The procedu
 From the repository root, language first, then the checks on those same files:
 
 ```bash
+python3 -m checks.explanation PATH/scene.yaml
 python3 -m checks.language scan PATH
 python3 -m checks.diagrams check PATH/scene.yaml
 python3 -m checks.confidentiality scan .

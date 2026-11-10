@@ -1,0 +1,85 @@
+title: "From VH production to reconstructed H-to-bb categories"
+brief: ../briefs/student.yaml
+claim_registry: ../claims.yaml
+scenes:
+  - id: production_and_decay
+    question: "How are the production tag and Higgs decay connected?"
+    takeaway: "VH production supplies the associated boson, while H-to-bb remains the Higgs decay."
+    requires:
+      - particle_decay
+      - quarks
+    introduces:
+      - associated_production
+    covers_distinctions:
+      - "The accompanying W or Z is part of the production process; it is not a decay product of the Higgs."
+    visual_purpose: "Build the VH production part before revealing the H-to-bb branch."
+    why_next: "The parton-level topology must next be connected to reconstructed analysis objects."
+    narration:
+      - cue: production
+        text: "In associated production, the vector boson is produced together with the Higgs."
+      - cue: decay
+        text: "The Higgs then supplies the bottom-quark pair through its decay."
+    visual:
+      kind: diagram
+      motion: still
+      diagram: ../diagrams/wh.yaml
+      cues:
+        - id: production
+          show_lines:
+            - q_in
+            - qbar_in
+            - wstar
+            - w_out
+            - higgs
+        - id: decay
+          show_lines: all
+    claims:
+      - id: production_words
+        claim_ref: vhbb.production.separation
+        text: "In associated production, the vector boson is produced together with the Higgs."
+      - id: decay_words
+        claim_ref: vhbb.hbb.decay
+        text: "The Higgs then supplies the bottom-quark pair through its decay."
+      - id: topology_graph
+        claim_ref: vhbb.wh.diagram
+
+  - id: reconstructed_categories
+    question: "How does that topology become an experimental event selection?"
+    takeaway: "The analysis combines charged-lepton categories with identified b jets."
+    requires:
+      - associated_production
+      - leptons
+      - basic_probability
+    introduces:
+      - jets
+      - b_tagging
+      - lepton_categories
+    covers_distinctions:
+      - "A bottom quark and a reconstructed b-tagged jet are different objects."
+    visual_purpose: "Show the full topology for the channel statement, then focus on the Higgs-to-bb branch while defining b jets."
+    narration:
+      - cue: categories
+        text: "CMS searched final states with zero, one, or two charged leptons and two identified bottom-quark jets."
+      - cue: btag
+        text: "A b-tagged jet is a reconstructed jet associated with bottom-quark origin; it is not the bottom quark itself."
+    visual:
+      kind: diagram
+      motion: still
+      diagram: ../diagrams/zh.yaml
+      cues:
+        - id: categories
+          show_lines: all
+        - id: btag
+          show_lines:
+            - higgs
+            - b_out
+            - bbar_out
+    claims:
+      - id: categories_words
+        claim_ref: vhbb.categories.leptons
+        text: "CMS searched final states with zero, one, or two charged leptons and two identified bottom-quark jets."
+      - id: btag_words
+        claim_ref: vhbb.btag.object
+        text: "A b-tagged jet is a reconstructed jet associated with bottom-quark origin; it is not the bottom quark itself."
+      - id: topology_graph
+        claim_ref: vhbb.zh.diagram

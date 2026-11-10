@@ -14,6 +14,8 @@ Reusable scientific content can live in a project-local `claims.yaml`. Scenes re
 
 Audience-specific scene files can also link to a validated brief and declare a reasoning sequence. `python3 -m checks.storyboard check SCENE.yaml --report build/storyboard-review.md` checks prerequisites, introduced concepts, required distinctions, claim references, and semantic visual cues. For theory diagrams, segmented narration cues now drive progressive line reveals in the narrated video.
 
+`examples/vhbb/` is the first complete audience benchmark: public, undergraduate, and HEP-specialist explanations share reviewed scientific claims but use different reasoning paths. `python -m checks.explanation SCENE.yaml` runs the renderer-equivalent validation path without producing media.
+
 Development assistance and attribution are recorded in [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 > **This repository is public.** Never commit internal or unapproved CMS material. That includes plots, numbers, slides, and videos. The only figures, values, decks, and clips that may be added are approved public results, or toy and simulated examples. If a file is not clearly public, leave it out.

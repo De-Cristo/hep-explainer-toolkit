@@ -1,0 +1,21 @@
+positions:
+  h: [-3.0, 0.0]
+  v: [0.0, 0.0]
+  b: [3.0, 1.2]
+  bbar: [3.0, -1.2]
+vertices:
+  - id: v
+    particles: ["H", "b", "bbar"]
+lines:
+  - id: higgs
+    particle: H
+    source: h
+    target: v
+  - id: b_out
+    particle: b
+    source: v
+    target: b
+  - id: bbar_out
+    particle: bbar
+    source: v
+    target: bbar

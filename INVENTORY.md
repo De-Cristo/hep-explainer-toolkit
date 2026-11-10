@@ -16,6 +16,8 @@ Initial upstream survey: 2026-11-09. The repository now contains working HEP-spe
 | Static / animated Feynman diagrams | implemented | `python3 -m diagrams ...` |
 | Semantic narration-to-visual cue timing | implemented + tested for theory diagram scenes | `checks/storyboard.py`, segmented narration in `video/explain.py` |
 | Reusable audience-independent scientific claim objects | implemented + tested | `checks/claims.py`, `examples/theory/vh/claims.yaml` |
+| Multi-audience end-to-end benchmark | implemented + tested | `examples/vhbb/` public, student, and specialist variants |
+| Synthetic scene render in CI | implemented + tested | `video/tests/test_explain_integration.py` |
 | Publication packages for Indico/CDS/YouTube | planned | not yet implemented |
 
 The sections below describe the upstream components and the original integration rationale. Items explicitly marked as guesses remain survey notes rather than supported toolkit features.

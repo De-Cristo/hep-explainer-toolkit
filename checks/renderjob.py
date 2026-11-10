@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from checks.documents import Document
+from checks.documents import Document, document_from_lines
 from checks.yamlsubset import YamlError, load as load_yaml
 
 _SOURCE_REQUIRED = {"slide", "narration", "asset", "figure", "plot"}
@@ -72,6 +72,80 @@ class RenderJob:
                 seen.add(path)
                 unique.append(path)
         return tuple(unique)
+
+
+def find_project_root(start: Path) -> Path:
+    """Return the nearest ancestor carrying sources.yaml, else the directory."""
+    current = Path(start).resolve()
+    if current.is_file():
+        current = current.parent
+    for directory in (current, *current.parents):
+        if any((directory / name).is_file() for name in ("sources.yaml", "sources.yml")):
+            return directory
+    return current
+
+
+def scene_render_job(scene: Path, document: dict) -> RenderJob:
+    """Build the exact validation/render contract for a scene explanation."""
+    from checks.claims import registry_dependencies
+    from checks.storyboard import narration_segments
+
+    scene = Path(scene).resolve()
+    inputs = [RenderInput(scene, "scene")]
+    brief_raw = document.get("brief")
+    if brief_raw:
+        inputs.append(
+            RenderInput((scene.parent / str(brief_raw)).resolve(), "brief")
+        )
+    registry_raw = document.get("claim_registry")
+    if registry_raw:
+        registry_path = (scene.parent / str(registry_raw)).resolve()
+        for dependency in registry_dependencies(registry_path):
+            inputs.append(RenderInput(dependency, "evidence"))
+
+    texts: list[str] = []
+    for item in document.get("scenes") or []:
+        for segment in narration_segments(item):
+            texts.append(segment.text)
+        visual = item.get("visual") or {}
+        raw_diagram = visual.get("diagram")
+        if raw_diagram:
+            inputs.append(
+                RenderInput((scene.parent / str(raw_diagram)).resolve(), "diagram")
+            )
+        raw_file = visual.get("file")
+        if raw_file:
+            inputs.append(
+                RenderInput((scene.parent / str(raw_file)).resolve(), "asset")
+            )
+        for claim in item.get("claims") or []:
+            if not isinstance(claim, dict):
+                continue
+            raw_excerpt = claim.get("excerpt")
+            if raw_excerpt:
+                inputs.append(
+                    RenderInput(
+                        (scene.parent / str(raw_excerpt)).resolve(),
+                        "evidence",
+                    )
+                )
+
+    unique: list[RenderInput] = []
+    seen: set[Path] = set()
+    for item in inputs:
+        path = item.path.resolve()
+        if path not in seen:
+            seen.add(path)
+            unique.append(RenderInput(path, item.role))
+
+    return make_render_job(
+        find_project_root(scene.parent),
+        unique,
+        trace_documents=[
+            document_from_lines(scene, "narration", texts)
+        ],
+        scene_paths=[scene],
+    )
 
 
 def make_render_job(

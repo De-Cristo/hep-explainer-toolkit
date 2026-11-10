@@ -1,0 +1,87 @@
+title: "Public CMS VH H-to-bb result: channel and result scope"
+brief: ../briefs/specialist.yaml
+claim_registry: ../claims.yaml
+scenes:
+  - id: channel_scope
+    question: "Which public VH H-to-bb final states enter the result?"
+    takeaway: "The analysis spans zero-, one-, and two-charged-lepton final states with two identified b jets."
+    requires:
+      - associated_production
+      - H_to_bb
+      - b_tagging
+    introduces:
+      - analysis_categories
+    covers_distinctions:
+      - "The zero-, one-, and two-lepton labels describe analysis final states, not Higgs branching fractions."
+    visual_purpose: "Keep the complete ZH topology visible while stating the public channel definition."
+    why_next: "After defining the channels, state which dataset the 2017 measurement used."
+    narration: "CMS searched VH H-to-bb in final states with zero, one, or two charged leptons and two identified bottom-quark jets."
+    visual:
+      kind: diagram
+      motion: still
+      diagram: ../diagrams/zh.yaml
+    claims:
+      - id: categories_words
+        claim_ref: vhbb.categories.leptons
+        text: "CMS searched VH H-to-bb in final states with zero, one, or two charged leptons and two identified bottom-quark jets."
+      - id: topology_graph
+        claim_ref: vhbb.zh.diagram
+
+  - id: dataset_scope
+    question: "What data sample does the 2017 measurement describe?"
+    takeaway: "The 2017 measurement uses 41.3 inverse femtobarns at 13 TeV."
+    requires:
+      - analysis_categories
+    introduces:
+      - dataset_scope
+    visual_purpose: "Hold the WH topology while the dataset scope is stated without changing the physics picture."
+    why_next: "With the dataset scope fixed, quote the combined-VH quantitative result."
+    narration: "The 2017 measurement used 41.3 inverse femtobarns of proton-proton collisions at 13 TeV."
+    visual:
+      kind: diagram
+      motion: still
+      diagram: ../diagrams/wh.yaml
+    claims:
+      - id: lumi_words
+        claim_ref: vhbb.dataset.lumi
+        text: "The 2017 measurement used 41.3 inverse femtobarns of proton-proton collisions at 13 TeV."
+      - id: energy_words
+        claim_ref: vhbb.dataset.energy
+        text: "The 2017 measurement used 41.3 inverse femtobarns of proton-proton collisions at 13 TeV."
+      - id: topology_graph
+        claim_ref: vhbb.wh.diagram
+
+  - id: vh_result
+    question: "What did the combined VH measurement report?"
+    takeaway: "The combined VH result reached 4.8 standard deviations with a signal strength near one."
+    requires:
+      - dataset_scope
+      - signal_strength
+    introduces:
+      - vh_result_scope
+    covers_distinctions:
+      - "The quoted 4.8-standard-deviation result is for the combined VH measurements."
+    visual_purpose: "Keep the complete ZH topology as a stable process reference while the quantitative result is stated."
+    narration:
+      - cue: significance
+        text: "For the combined VH measurements, CMS reported an observed significance of 4.8 standard deviations."
+      - cue: strength
+        text: "The corresponding measured signal strength was 1.01 plus or minus 0.22."
+    visual:
+      kind: diagram
+      motion: still
+      diagram: ../diagrams/zh.yaml
+      cues:
+        - id: significance
+          show_lines: all
+        - id: strength
+          show_lines: all
+    claims:
+      - id: significance_words
+        claim_ref: vhbb.vh.significance
+        text: "For the combined VH measurements, CMS reported an observed significance of 4.8 standard deviations."
+      - id: strength_words
+        claim_ref: vhbb.vh.mu
+        text: "The corresponding measured signal strength was 1.01 plus or minus 0.22."
+      - id: topology_graph
+        claim_ref: vhbb.zh.diagram
