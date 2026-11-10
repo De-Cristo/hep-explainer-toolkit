@@ -26,6 +26,7 @@ from checks.storyboard import (
 )
 from checks.yamlsubset import YamlError, load as load_yaml
 from diagrams.render import render_drawing_figure, render_equation, render_figure
+from diagrams.states import DiagramStateError, cue_drawing
 from video.lexicon import apply_lexicon, load_lexicon
 from video.mux import (
     add_subtitles,
@@ -254,33 +255,6 @@ def _picture_for_segment(
     return _picture(scene_path, item, dest_stem)
 
 
-def cue_drawing(drawing: dict, show_lines: object) -> dict:
-    """Return a resolved diagram state for one semantic cue."""
-    if show_lines in (None, "all"):
-        return {
-            "vertices": drawing["vertices"],
-            "lines": list(drawing["lines"]),
-            "positions": drawing.get("positions") or {},
-        }
-    if not isinstance(show_lines, list):
-        raise SystemExit("show_lines must be a list of diagram line ids or 'all'")
-    wanted = {str(item) for item in show_lines}
-    known = {str(line["id"]) for line in drawing["lines"]}
-    unknown = sorted(wanted - known)
-    if unknown:
-        raise SystemExit(
-            "unknown diagram line id(s): " + ", ".join(unknown)
-        )
-    return {
-        "vertices": drawing["vertices"],
-        "lines": [
-            line for line in drawing["lines"]
-            if str(line["id"]) in wanted
-        ],
-        "positions": drawing.get("positions") or {},
-    }
-
-
 def _picture(scene_path: Path, item: dict, dest_stem: Path) -> Path:
     visual = item["visual"]
     kind = str(visual.get("kind"))
@@ -330,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
             args.scene, args.out,
             threads=args.threads, voice=args.voice, work_dir=args.work_dir,
         )
-    except (ClaimRegistryError, SceneError, StoryboardError, YamlError, SystemExit) as exc:
+    except (ClaimRegistryError, DiagramStateError, SceneError, StoryboardError, YamlError, SystemExit) as exc:
         if isinstance(exc, SystemExit):
             if isinstance(exc.code, str):
                 print(exc.code, file=sys.stderr)
