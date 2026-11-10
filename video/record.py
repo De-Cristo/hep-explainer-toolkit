@@ -89,8 +89,15 @@ def record_stills(
     holds: list[float],
     work: Path,
 ) -> None:
-    """One PNG per step. Retries the walk if Chromium is killed."""
+    """One PNG per step. Retries the walk if Chromium is killed.
+
+    Screenshots from an earlier invocation are never reused. Valid frames
+    produced during this invocation may still be reused by retry attempts.
+    """
     _require_playwright()
+    for _slide, _step, png in shots:
+        if png.exists():
+            png.unlink()
     plan = {
         "mode": "stills",
         "deck": str(deck_html),
