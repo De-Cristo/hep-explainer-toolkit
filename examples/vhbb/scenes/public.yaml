@@ -36,9 +36,9 @@ scenes:
     visual_purpose: "Reveal the associated-production part first, then attach the H-to-bb decay."
     narration:
       - cue: production
-        text: "In the CMS observation, the main contribution came from Higgs bosons produced together with a W or Z boson."
+        text: "In the CMS observation, the main contribution came from Higgs bosons produced with a W or Z boson."
       - cue: complete
-        text: "The accompanying boson belongs to the production process, while the Higgs still provides the bottom-quark pair."
+        text: "The W or Z belongs to the production process; the Higgs still supplies the bottom-quark pair."
     visual:
       kind: diagram
       motion: still
