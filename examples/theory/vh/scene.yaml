@@ -1,12 +1,36 @@
 title: "VH associated production"
+brief: brief.yaml
 claim_registry: claims.yaml
 scenes:
   - id: wh
-    narration: "A quark and an antiquark of different flavour annihilate into an off-shell W. That boson produces an on-shell W and a Higgs, which decays to a bottom quark and a bottom antiquark."
+    question: "What changes when the associated vector boson carries electric charge?"
+    takeaway: "WH starts from a charged-current transition between different quark flavours."
+    requires:
+      - quarks
+      - electroweak_bosons
+      - particle_decay
+    introduces:
+      - associated_production
+      - charged_current_flavour_transition
+    visual_purpose: "Build the incoming charged-current state first, then reveal the full WH and H-to-bb topology."
+    why_next: "Compare the charged-current flavour pattern with neutral-current ZH production."
+    narration:
+      - cue: incoming
+        text: "A quark and an antiquark of different flavour annihilate into an off-shell W."
+      - cue: complete
+        text: "That boson produces an on-shell W and a Higgs, which decays to a bottom quark and a bottom antiquark."
     visual:
-      kind: manim
-      motion: build
+      kind: diagram
+      motion: still
       diagram: wh.yaml
+      cues:
+        - id: incoming
+          show_lines:
+            - q_in
+            - qbar_in
+            - wstar
+        - id: complete
+          show_lines: all
     claims:
       - id: words
         claim_ref: vh.wh.production
@@ -15,11 +39,33 @@ scenes:
         claim_ref: vh.wh.diagram
 
   - id: zh
-    narration: "For a Z the incoming quark and antiquark have the same flavour. The off-shell Z produces an on-shell Z and a Higgs, and the Higgs again decays to a bottom quark and a bottom antiquark."
+    question: "How does the initial state change for neutral-current ZH production?"
+    takeaway: "ZH keeps the quark flavour diagonal at the initial Z vertex."
+    requires:
+      - associated_production
+      - charged_current_flavour_transition
+    introduces:
+      - neutral_current_flavour_structure
+    covers_distinctions:
+      - "WH uses a charged-current quark transition, while ZH uses a flavour-diagonal neutral-current quark vertex."
+    visual_purpose: "Reveal the flavour-diagonal incoming Z state first, then complete the ZH and H-to-bb topology."
+    narration:
+      - cue: incoming
+        text: "For a Z the incoming quark and antiquark have the same flavour."
+      - cue: complete
+        text: "The off-shell Z produces an on-shell Z and a Higgs, and the Higgs again decays to a bottom quark and a bottom antiquark."
     visual:
       kind: diagram
       motion: still
       diagram: zh.yaml
+      cues:
+        - id: incoming
+          show_lines:
+            - q_in
+            - qbar_in
+            - zstar
+        - id: complete
+          show_lines: all
     claims:
       - id: words
         claim_ref: vh.zh.production

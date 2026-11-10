@@ -14,7 +14,7 @@ Initial upstream survey: 2026-11-09. The repository now contains working HEP-spe
 | Frontend slide deck -> narrated MP4 | implemented; Playwright/Kokoro runtime required | `python render-video.py video/examples/toy-peak` |
 | Theory scene -> narrated MP4 | implemented; renderer dependencies required | `python3 -m video.explain SCENE.yaml -o build/out.mp4` |
 | Static / animated Feynman diagrams | implemented | `python3 -m diagrams ...` |
-| Semantic narration-to-visual cue timing | planned | not yet implemented |
+| Semantic narration-to-visual cue timing | implemented + tested for theory diagram scenes | `checks/storyboard.py`, segmented narration in `video/explain.py` |
 | Reusable audience-independent scientific claim objects | implemented + tested | `checks/claims.py`, `examples/theory/vh/claims.yaml` |
 | Publication packages for Indico/CDS/YouTube | planned | not yet implemented |
 

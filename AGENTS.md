@@ -111,6 +111,50 @@ scenes:
 
 Do not duplicate `citation:` or `excerpt:` next to a `claim_ref`; the registry is the source of truth. The checker shows the canonical statement beside the audience wording and evidence, but it does not claim to prove semantic equivalence. A human must review simplifications and interpretation.
 
+## 1.6. Make the reasoning path and visual timing explicit
+
+For an audience-specific explanation, connect the scene file to its brief with `brief:`. Each scene records the question it answers, the idea to retain, prerequisites, concepts introduced, the purpose of the visual, and why the next scene follows. Validate that chain before rendering:
+
+```bash
+python3 -m checks.storyboard check PATH/scene.yaml --report build/storyboard-review.md
+```
+
+Narration may remain one string for backward compatibility. When visual timing matters, split it into named segments and map each segment to a visual cue:
+
+```yaml
+brief: brief.yaml
+scenes:
+  - id: wh
+    question: "What changes for charged-current WH production?"
+    takeaway: "The initial W vertex changes quark flavour."
+    requires:
+      - quarks
+    introduces:
+      - associated_production
+    visual_purpose: "Reveal the incoming state before the full topology."
+    why_next: "Compare with neutral-current ZH."
+    narration:
+      - cue: incoming
+        text: "A quark and antiquark form an off-shell W."
+      - cue: complete
+        text: "The full WH topology is then shown."
+    visual:
+      kind: diagram
+      diagram: wh.yaml
+      cues:
+        - id: incoming
+          show_lines:
+            - q_in
+            - qbar_in
+            - wstar
+        - id: complete
+          show_lines: all
+```
+
+For diagram scenes, these cues are executable: each narration segment gets its own measured audio duration and the renderer draws exactly the named diagram lines for that interval. A cue with `show_lines: all` restores the complete diagram. Segmented diagram cues use progressive still states; an uncued `motion: build` scene continues to use the existing Manim path.
+
+The storyboard checker also verifies that required concepts are known before use, all concepts requested by the brief are introduced, required distinctions are covered, claim references exist, narration cues have matching visual cues, and referenced diagram line IDs exist. These structural checks do not prove pedagogical quality; review the generated storyboard report.
+
 ## 2. Scene file
 
 One YAML file. The checks parser does not accept anchors or `|` / `>` block scalars. Quote strings that contain a colon, and put TeX in single quotes so backslashes stay literal.

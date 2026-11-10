@@ -1,0 +1,25 @@
+topic: "How WH and ZH associated-production topologies differ"
+
+audience:
+  profile: physics_undergraduate
+  knows:
+    - quarks
+    - electroweak_bosons
+    - particle_decay
+  introduce:
+    - associated_production
+    - charged_current_flavour_transition
+    - neutral_current_flavour_structure
+
+purpose: explain_production_topology
+medium: video
+duration_minutes: 2
+
+learning_goal: "Compare WH and ZH production topologies and explain the flavour distinction at the initial quark vertex."
+
+required_distinctions:
+  - "WH uses a charged-current quark transition, while ZH uses a flavour-diagonal neutral-current quark vertex."
+
+avoid:
+  - "Do not describe the Feynman diagram as a literal movie of microscopic time evolution."
+  - "Do not imply that the generic q labels specify a unique quark flavour."
