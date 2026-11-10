@@ -1,0 +1,34 @@
+[submodule "upstream/Code2Video"]
+	path = upstream/Code2Video
+	url = https://github.com/showlab/Code2Video.git
+[submodule "upstream/Paper2Video"]
+	path = upstream/Paper2Video
+	url = https://github.com/showlab/Paper2Video.git
+[submodule "upstream/TheoremExplainAgent"]
+	path = upstream/TheoremExplainAgent
+	url = https://github.com/TIGER-AI-Lab/TheoremExplainAgent.git
+[submodule "upstream/awesome-claude-video-skills"]
+	path = upstream/awesome-claude-video-skills
+	url = https://github.com/zhuyansen/awesome-claude-video-skills.git
+[submodule "upstream/cms-plotting"]
+	path = upstream/cms-plotting
+	url = https://github.com/DickyChant/cms-plotting.git
+[submodule "upstream/frontend-slides-PKU"]
+	path = upstream/frontend-slides-PKU
+	url = https://github.com/De-Cristo/frontend-slides-PKU.git
+	branch = feat/engine-updates-umd
+[submodule "upstream/manim-voiceover"]
+	path = upstream/manim-voiceover
+	url = https://github.com/ManimCommunity/manim-voiceover.git
+[submodule "upstream/manim"]
+	path = upstream/manim
+	url = https://github.com/ManimCommunity/manim.git
+[submodule "upstream/motion-canvas"]
+	path = upstream/motion-canvas
+	url = https://github.com/motion-canvas/motion-canvas.git
+[submodule "upstream/plotlyhep"]
+	path = upstream/plotlyhep
+	url = https://github.com/DickyChant/plotlyhep.git
+[submodule "upstream/slidev"]
+	path = upstream/slidev
+	url = https://github.com/slidevjs/slidev.git
