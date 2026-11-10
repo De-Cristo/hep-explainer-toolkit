@@ -111,6 +111,22 @@ scenes:
 
 Do not duplicate `citation:` or `excerpt:` next to a `claim_ref`; the registry is the source of truth. The checker shows the canonical statement beside the audience wording and evidence, but it does not claim to prove semantic equivalence. A human must review simplifications and interpretation.
 
+## 1.55. Track definitions, assumptions, and human interpretation review
+
+A quantity that has multiple legitimate definitions must not be represented as one ambiguous prose claim. Use `kind: definition` for each definition. A claim may declare `depends_on:` and `assumption_tags:`; the registry reports the transitive assumptions inherited from upstream claims.
+
+When two definitions are compared, use a top-level `comparisons:` block whose `same_when` and `differs_when` entries reference supported claims. Do not put unsupported comparison prose directly in that block.
+
+Machine readiness is not human interpretation approval. Create a separate review file:
+
+```bash
+python3 -m checks.review init PATH/claims.yaml PATH/reviews.json
+python3 -m checks.review approve PATH/claims.yaml PATH/reviews.json CLAIM_ID --reviewer "Name"
+python3 -m checks.review check PATH/claims.yaml PATH/reviews.json --strict
+```
+
+The approval digest includes the claim, its evidence excerpt, and upstream dependency digests. If any of them changes, the approval becomes `stale`. Never regenerate or approve a review file automatically as part of a release build; approval is an explicit human action.
+
 ## 1.6. Make the reasoning path and visual timing explicit
 
 For an audience-specific explanation, connect the scene file to its brief with `brief:`. Each scene records the question it answers, the idea to retain, prerequisites, concepts introduced, the purpose of the visual, and why the next scene follows. Validate that chain before rendering:
