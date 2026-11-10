@@ -33,11 +33,17 @@ jobs:
         run: python -m checks.confidentiality scan .
       - name: Language lint
         run: python -m checks.language scan .
+      - name: Browser recorder syntax
+        run: node --check video/record-deck.mjs
+      - name: Capability doctor baseline
+        run: python -m checks.doctor --require checks
       - name: Install ffmpeg for synthetic render smoke
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
       - name: Install lightweight render-smoke dependencies
         run: python -m pip install --disable-pip-version-check pyyaml==6.0.3 soundfile==0.14.0
+      - name: Semantic slide narration
+        run: python -m unittest discover -s video/tests -p "test_semantic_narration.py" -v
       - name: Synthetic scene render
         run: python -m unittest discover -s video/tests -p "test_explain_integration.py" -v
