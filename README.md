@@ -12,6 +12,8 @@ Renderers now declare an explicit render job: every slide, narration file, scene
 
 Reusable scientific content can live in a project-local `claims.yaml`. Scenes reference stable claim IDs while keeping audience-specific wording local; `python3 -m checks.claims check CLAIMS.yaml --report build/claim-review.md` produces a review surface with separate source, evidence, value, and interpretation states.
 
+In v0.3, definition claims can declare dependencies and assumption tags, and `comparisons:` can state which registered claims support conditions under which two definitions agree or differ. Human interpretation approval is kept separate from machine checks: `python -m checks.review init claims.yaml reviews.json`, followed by explicit `approve` actions. Approvals are hash-bound to the claim, evidence excerpt, and upstream dependencies, so edits make them stale automatically.
+
 Audience-specific scene files can also link to a validated brief and declare a reasoning sequence. `python3 -m checks.storyboard check SCENE.yaml --report build/storyboard-review.md` checks prerequisites, introduced concepts, required distinctions, claim references, and semantic visual cues. For theory diagrams, segmented narration cues now drive progressive line reveals in the narrated video.
 
 `examples/vhbb/` is the first complete audience benchmark: public, undergraduate, and HEP-specialist explanations share reviewed scientific claims but use different reasoning paths. `python -m checks.explanation SCENE.yaml` runs the renderer-equivalent validation path without producing media.
