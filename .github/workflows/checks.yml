@@ -24,6 +24,8 @@ jobs:
         run: python -m checks.authoring --help
       - name: Local scientific review UI import
         run: python -m checks.review_ui --help
+      - name: Reviewed slide scaffold import
+        run: python -m slides.scaffold --help
       - name: Reusable claim registry example
         run: python -m checks.claims check examples/theory/vh/claims.yaml
       - name: Audience-linked storyboard example

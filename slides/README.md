@@ -8,6 +8,23 @@ A deck consumes files from `plots/` and can embed a clip from `anim/` as a `<vid
 
 Only approved public results, or toy and simulated examples, belong here. Do not commit internal or unapproved CMS slides.
 
+## Reviewed authoring scaffold
+
+v0.4 can turn a current, human-approved authoring handoff into an editable frontend-slides starting point:
+
+```bash
+python -m checks.authoring verify-handoff build/approved-authoring.json
+
+python -m slides.scaffold build/approved-authoring.json \
+  --out-dir build/deck \
+  --author "Name" \
+  --event "Authoring review"
+```
+
+The default template is the pinned `upstream/frontend-slides-PKU/assets/templates/Empty_template.html`. The output includes `deck.html`, semantic `narration.yaml`, and `scaffold-plan.json`.
+
+This is not an automatic final-talk generator. It preserves the approved scientific/reasoning structure and gives the authoring agent a real deck with the correct reveal-state/narration contract, while leaving clearly marked visual-intent placeholders for actual plots, diagrams, figures, or animation. The plan always records `release_ready: false`.
+
 ## Semantic cue parity
 
 The pinned frontend engine already advances `.st[data-st=N]` fragments with ArrowRight/PageDown. v0.3 adds semantic names without changing that engine.
