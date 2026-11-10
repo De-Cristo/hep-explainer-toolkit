@@ -9,6 +9,7 @@ from pathlib import Path
 import yaml
 
 from checks.documents import Document, document_from_lines
+from slides.cues import CueMap, CueMapError
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,8 @@ class Cue:
     slide: int  # 1-based, matching <!-- [Slide N] -->
     step: int   # 0 is the slide as it arrives, before any data-st reveal
     text: str
+    scene: str | None = None
+    cue: str | None = None
 
 
 @dataclass(frozen=True)
@@ -34,7 +37,7 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def load_script(path: Path) -> Script:
+def load_script(path: Path, cue_map: CueMap | None = None) -> Script:
     path = Path(path)
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or "steps" not in data:
@@ -48,13 +51,52 @@ def load_script(path: Path) -> Script:
     for i, item in enumerate(raw_steps, start=1):
         if not isinstance(item, dict):
             raise ValueError(f"{path}: step {i} is not a mapping")
-        try:
-            slide = int(item["slide"])
-            step = int(item["step"])
-        except (KeyError, TypeError, ValueError) as exc:
-            raise ValueError(f"{path}: step {i} needs integer slide and step") from exc
+        has_numeric = "slide" in item or "step" in item
+        scene = str(item.get("scene") or "").strip() or None
+        cue_name = str(item.get("cue") or "").strip() or None
+        has_semantic = scene is not None or cue_name is not None
+
+        if has_numeric:
+            try:
+                slide = int(item["slide"])
+                step = int(item["step"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"{path}: step {i} needs both integer slide and step"
+                ) from exc
+        elif has_semantic:
+            if not scene or not cue_name:
+                raise ValueError(
+                    f"{path}: step {i} needs both scene and cue"
+                )
+            if cue_map is None:
+                raise ValueError(
+                    f"{path}: step {i} uses scene/cue but no deck cue map was supplied"
+                )
+            try:
+                slide, step = cue_map.resolve(scene, cue_name)
+            except CueMapError as exc:
+                raise ValueError(str(exc)) from exc
+        else:
+            raise ValueError(
+                f"{path}: step {i} needs slide/step or scene/cue"
+            )
+
         if slide < 1 or step < 0:
             raise ValueError(f"{path}: step {i} has slide {slide} step {step}; slide starts at 1, step at 0")
+
+        if has_numeric and has_semantic:
+            if not scene or not cue_name or cue_map is None:
+                raise ValueError(
+                    f"{path}: step {i} has semantic fields but no complete cue mapping"
+                )
+            expected = cue_map.resolve(scene, cue_name)
+            if expected != (slide, step):
+                raise ValueError(
+                    f"{path}: step {i} numeric target {slide}.{step} disagrees "
+                    f"with semantic target {scene}/{cue_name} -> {expected[0]}.{expected[1]}"
+                )
+
         text = normalize_text(str(item.get("text", "")))
         if not text:
             raise ValueError(f"{path}: slide {slide} step {step} has empty text")
@@ -62,7 +104,7 @@ def load_script(path: Path) -> Script:
         if key in seen:
             raise ValueError(f"{path}: duplicate cue for slide {slide} step {step}")
         seen.add(key)
-        cues.append(Cue(slide, step, text))
+        cues.append(Cue(slide, step, text, scene, cue_name))
 
     lexicon = data.get("lexicon")
     lexicon_path = None
