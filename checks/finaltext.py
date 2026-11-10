@@ -24,7 +24,13 @@ from checks.confidentiality import scan as scan_confidentiality
 from checks.documents import classify
 from checks.language import ok as language_ok
 from checks.language import scan as scan_language
-from checks.traceability import ManifestError, check as check_traceability
+from checks.provenance import ProvenanceError, check_inputs_explicit
+from checks.renderjob import RenderJob
+from checks.traceability import (
+    ManifestError,
+    check as check_traceability,
+    check_documents,
+)
 
 
 class FinalTextError(RuntimeError):
@@ -98,6 +104,129 @@ def run_ordered_checks(
                 + "\n".join(problems)
             )
     return Seal(snap)
+
+
+def seal_render_job(job: RenderJob) -> Seal:
+    """Validate and seal one explicit renderer job.
+
+    Unlike the compatibility path below, every input role is supplied by the
+    renderer. Parsed narration is traced directly, scene paths are explicit,
+    and manifests plus local fit/datacard evidence are included in the seal.
+    """
+    missing = [str(path) for path in job.seal_paths() if not path.is_file()]
+    if missing:
+        raise FinalTextError("render job dependency is missing:\n" + "\n".join(missing))
+    snap = {str(path): _sha256(path) for path in job.seal_paths()}
+
+    language_paths = [
+        item.path for item in job.inputs
+        if item.role in {"slide", "narration", "scene"}
+    ]
+    print("language pass on explicit render inputs")
+    language_failures = _language(language_paths)
+    _require_same(snap, "during the language pass")
+    if language_failures:
+        raise FinalTextError(
+            "language pass failed; later checks were not run:\n"
+            + "\n".join(language_failures)
+        )
+
+    print("provenance, number trace, and scene checks on the explicit render job")
+    for name, problems in (
+        ("provenance", _job_provenance(job)),
+        ("traceability", _job_traceability(job)),
+        ("diagrams", _job_diagrams(job)),
+    ):
+        _require_same(snap, f"during {name}")
+        if problems:
+            raise FinalTextError(
+                f"{name} failed on the explicit render job:\n"
+                + "\n".join(problems)
+            )
+    return Seal(snap)
+
+
+def _job_provenance(job: RenderJob) -> list[str]:
+    failures: list[str] = []
+    report = scan_confidentiality(job.root)
+    failures.extend(
+        f"{item.rule_id} {item.path} {item.note or item.snippet}"
+        for item in report.failures
+    )
+    try:
+        rows = check_inputs_explicit(
+            job.provenance_inputs(),
+            job.root,
+            job.manifests,
+        )
+    except ProvenanceError as exc:
+        failures.append(str(exc))
+    else:
+        failures.extend(f"{rule} {rel} {note}" for rule, rel, note in rows)
+
+    root = job.root.resolve()
+    for item in job.inputs:
+        path = item.path.resolve()
+        try:
+            path.relative_to(root)
+            continue
+        except ValueError:
+            pass
+        external = scan_confidentiality(path)
+        failures.extend(
+            f"{finding.rule_id} {finding.path} {finding.note or finding.snippet}"
+            for finding in external.failures
+            if finding.channel != "provenance"
+        )
+    return failures
+
+
+def _job_traceability(job: RenderJob) -> list[str]:
+    if not job.trace_documents:
+        return []
+    manifest = job.primary_manifest
+    if manifest is None:
+        return [
+            f"no sources.yaml in {job.root}; number trace has no primary manifest"
+        ]
+    try:
+        report = check_documents(manifest, job.trace_documents)
+    except ManifestError as exc:
+        return [str(exc)]
+    if report.ok:
+        return []
+    lines = list(report.source_errors)
+    lines.extend(
+        f"{item.path}:{item.line} {item.value} {item.surface}"
+        for item in report.failures
+    )
+    lines.extend(
+        f"{item.path}:{item.line} {item.message} {item.surface}"
+        for item in report.wording
+    )
+    return lines or ["number trace failed"]
+
+
+def _job_diagrams(job: RenderJob) -> list[str]:
+    if not job.scene_paths:
+        return []
+    try:
+        from checks.diagrams import SceneError, check_path
+    except ImportError:
+        return ["scene checker is unavailable"]
+    problems: list[str] = []
+    for scene in job.scene_paths:
+        try:
+            report = check_path(scene)
+        except SceneError as exc:
+            problems.append(str(exc))
+            continue
+        problems.extend(
+            f"{row.scene}/{row.item} {row.message}"
+            for row in report.rows
+            if row.status == "FAIL"
+        )
+    return problems
 
 
 def assert_captions(narration: Path, captions: list[str], seal: Seal) -> None:
