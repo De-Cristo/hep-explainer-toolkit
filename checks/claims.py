@@ -302,6 +302,10 @@ def _claim(registry_path: Path, raw: object, index: int) -> Claim:
         raise ClaimRegistryError(f"{registry_path}/{claim_id}: context must be a mapping")
     assumptions = _strings(raw.get("assumptions"), registry_path, claim_id, "assumptions")
     caveats = _strings(raw.get("caveats"), registry_path, claim_id, "caveats")
+    depends_on = _strings(raw.get("depends_on"), registry_path, claim_id, "depends_on")
+    assumption_tags = _strings(
+        raw.get("assumption_tags"), registry_path, claim_id, "assumption_tags"
+    )
     review = _review(raw.get("review"), registry_path, claim_id)
     if kind == "number" and review["value"] == "not_applicable":
         raise ClaimRegistryError(
@@ -321,8 +325,76 @@ def _claim(registry_path: Path, raw: object, index: int) -> Claim:
         context=dict(context),
         assumptions=assumptions,
         caveats=caveats,
+        depends_on=depends_on,
+        assumption_tags=assumption_tags,
         review=review,
     )
+
+
+def _comparison(
+    path: Path,
+    raw: object,
+    index: int,
+    claims: dict[str, Claim],
+) -> Comparison:
+    if not isinstance(raw, dict):
+        raise ClaimRegistryError(f"{path}: comparison {index} must be a mapping")
+    comparison_id = str(raw.get("id") or "").strip()
+    if not _ID.fullmatch(comparison_id):
+        raise ClaimRegistryError(
+            f"{path}: comparison {index} has invalid id {comparison_id!r}"
+        )
+    left = str(raw.get("left") or "").strip()
+    right = str(raw.get("right") or "").strip()
+    if left not in claims or right not in claims:
+        raise ClaimRegistryError(
+            f"{path}/{comparison_id}: left and right must reference registered claims"
+        )
+    same_when = _strings(raw.get("same_when"), path, comparison_id, "same_when")
+    differs_when = _strings(raw.get("differs_when"), path, comparison_id, "differs_when")
+    unknown = [
+        ref for ref in (*same_when, *differs_when)
+        if ref not in claims
+    ]
+    if unknown:
+        raise ClaimRegistryError(
+            f"{path}/{comparison_id}: unknown comparison support claim(s): "
+            + ", ".join(unknown)
+        )
+    if not same_when or not differs_when:
+        raise ClaimRegistryError(
+            f"{path}/{comparison_id}: comparisons need same_when and differs_when support"
+        )
+    return Comparison(comparison_id, left, right, same_when, differs_when)
+
+
+def _validate_dependencies(path: Path, claims: dict[str, Claim]) -> None:
+    for claim in claims.values():
+        unknown = [item for item in claim.depends_on if item not in claims]
+        if unknown:
+            raise ClaimRegistryError(
+                f"{path}/{claim.id}: unknown depends_on claim(s): "
+                + ", ".join(unknown)
+            )
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(claim_id: str) -> None:
+        if claim_id in visited:
+            return
+        if claim_id in visiting:
+            raise ClaimRegistryError(
+                f"{path}: dependency cycle contains {claim_id}"
+            )
+        visiting.add(claim_id)
+        for dep in claims[claim_id].depends_on:
+            visit(dep)
+        visiting.remove(claim_id)
+        visited.add(claim_id)
+
+    for claim_id in claims:
+        visit(claim_id)
 
 
 def _validate_citation(path: Path, claim_id: str, citation: dict) -> None:
