@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from checks.storyboard import check_storyboard
-from video.explain import cue_drawing
+from diagrams.states import cue_drawing
 
 ROOT = Path(__file__).resolve().parents[2]
 
