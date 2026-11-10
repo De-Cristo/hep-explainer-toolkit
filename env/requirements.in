@@ -22,3 +22,11 @@ manim-voiceover
 
 # Read ROOT files from public HEPData or CERN Open Data.
 uproot
+
+# Video pipeline tests.
+pytest==9.2.0
+
+# Kokoro's English G2P (misaki) loads spaCy's en_core_web_sm at runtime.
+# 3.8.0 matches spaCy 3.8.x. The lock already pins this wheel. render-video
+# downloads it if the environment does not have it yet.
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

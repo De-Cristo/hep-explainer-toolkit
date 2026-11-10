@@ -27,8 +27,11 @@ __pycache__/
 .ruff_cache/
 .ipynb_checkpoints/
 
-# Virtual environments
+# Virtual environments. env/requirements.in is the Python 3.12 pin, not a venv.
 .venv/
 venv/
-env/
 ENV/
+env/*
+!env/requirements.in
+!env/requirements.txt
+!env/setup.sh

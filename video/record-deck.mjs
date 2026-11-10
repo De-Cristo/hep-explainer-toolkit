@@ -1,20 +1,25 @@
 // Walk a frontend-slides deck the way upstream/frontend-slides-PKU
-// scripts/test-steps.mjs does, and write one settled PNG per narration step.
+// scripts/test-steps.mjs does.
 //
 // The submodule script is a one-shot with no exports, so this file repeats
-// its contract instead of importing it: spoof navigator.webdriver (otherwise
-// the engine forces every fragment visible for PDF export), open at
-// 1920×1080, and advance with a single ArrowRight. Step 0 is the arrival
-// state. The CSS fade is turned off at record time so each PNG is the
-// settled frame; ffmpeg holds that frame for the narration.
+// its contract: spoof navigator.webdriver (otherwise the engine forces every
+// fragment visible for PDF export), open at 1920×1080, and advance with a
+// single ArrowRight. Step 0 is the arrival state.
+//
+// mode "video": Playwright recordVideo, holding each step for holdMs. The
+// hold budget includes the time spent advancing, so the on-screen time is
+// the measured audio duration rather than audio-plus-navigation. Prints
+// LEAD_MS and VIDEO. Exits non-zero if the browser dies.
+// mode "stills": one PNG per step. A dead browser retries from the last
+// finished PNG instead of aborting the whole deck.
 //
 //   node record-deck.mjs plan.json
-// plan.json: { "deck": "/abs/deck.html", "shots": [{ "slide": 1, "step": 0, "png": "/abs/out.png" }] }
 
 import { chromium } from 'playwright';
-import { readFileSync, mkdirSync } from 'fs';
+import { mkdirSync, statSync } from 'fs';
 import { dirname } from 'path';
 import { pathToFileURL } from 'url';
+import { readFileSync } from 'fs';
 
 const plan = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 
@@ -24,72 +29,55 @@ function fail(message, extra) {
   process.exit(1);
 }
 
-const browser = await chromium.launch({
-  args: ['--disable-dev-shm-usage', '--disable-gpu'],
-});
-const page = await browser.newPage({
-  viewport: { width: 1920, height: 1080 },
-  deviceScaleFactor: 1,
-});
-page.on('pageerror', (err) => console.log('PAGEERROR', err.message));
+function pngReady(file) {
+  try {
+    return statSync(file).size > 8000;
+  } catch {
+    return false;
+  }
+}
 
-// Playwright sets navigator.webdriver, and the engine treats that as PDF
-// export (html.rv-instant forces every .st visible). Put the flag back
-// before any page script runs, matching test-steps.mjs.
-await page.addInitScript(() => {
-  Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-});
-
-await page.goto(pathToFileURL(plan.deck).href, {
-  waitUntil: 'domcontentloaded',
-  timeout: 30000,
-});
-
-await page.evaluate(() => {
-  const scroller = document.querySelector('.slides-scroller');
-  if (!scroller) throw new Error('no .slides-scroller — not a frontend-slides deck');
-  const original = scroller.scrollTo.bind(scroller);
-  scroller.scrollTo = (options) => {
-    if (options && typeof options === 'object') {
-      return original({ ...options, behavior: 'instant' });
-    }
-    return original(options);
-  };
-  const style = document.createElement('style');
-  // Settled frame only. The 0.45s opacity fade is shorter than narration
-  // and would make the hold time depend on wall-clock animation.
-  style.textContent = [
-    '.reveal, .st, .st.pop, .st .dot, .st .curvepath {',
-    '  transition: none !important;',
-    '  animation: none !important;',
-    '}',
-  ].join('\n');
-  document.head.appendChild(style);
-});
-
-await Promise.race([
-  page.evaluate(() => (document.fonts ? document.fonts.ready : Promise.resolve())),
-  page.waitForTimeout(4000),
-]);
-
-await Promise.race([
-  page.evaluate(async () => {
-    const started = Date.now();
-    while (Date.now() - started < 3000) {
-      if (window.MathJax?.startup?.promise) {
-        try { await window.MathJax.startup.promise; } catch { /* untypeset math is still a frame */ }
-        return;
+async function openDeck(browser) {
+  const page = await browser.newPage({
+    viewport: { width: 1920, height: 1080 },
+    deviceScaleFactor: 1,
+  });
+  page.on('pageerror', (err) => console.log('PAGEERROR', err.message));
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  });
+  await page.goto(pathToFileURL(plan.deck).href, {
+    waitUntil: 'domcontentloaded',
+    timeout: 30000,
+  });
+  await page.evaluate(() => {
+    const scroller = document.querySelector('.slides-scroller');
+    if (!scroller) throw new Error('no .slides-scroller — not a frontend-slides deck');
+    const original = scroller.scrollTo.bind(scroller);
+    scroller.scrollTo = (options) => {
+      if (options && typeof options === 'object') {
+        return original({ ...options, behavior: 'instant' });
       }
-      if (!document.getElementById('MathJax-script')) return;
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-  }),
-  page.waitForTimeout(4000),
-]);
+      return original(options);
+    };
+    const style = document.createElement('style');
+    style.textContent = [
+      '.reveal, .st, .st.pop, .st .dot, .st .curvepath {',
+      '  transition: none !important;',
+      '  animation: none !important;',
+      '}',
+    ].join('\n');
+    document.head.appendChild(style);
+  });
+  await Promise.race([
+    page.evaluate(() => (document.fonts ? document.fonts.ready : Promise.resolve())),
+    page.waitForTimeout(4000),
+  ]);
+  await page.locator('body').click({ position: { x: 8, y: 8 } });
+  return page;
+}
 
-await page.locator('body').click({ position: { x: 8, y: 8 } });
-
-async function probe(slideNumber, step) {
+function probe(page, slideNumber, step) {
   return page.evaluate(({ slideNumber, step }) => {
     const slides = [...document.querySelectorAll('.slide')];
     const index = slideNumber - 1;
@@ -115,13 +103,11 @@ async function probe(slideNumber, step) {
       visible,
       mismatches,
       slideCount: slides.length,
-      on: slide.querySelectorAll('.st.on').length,
-      tot: slide.querySelectorAll('.st').length,
     };
   }, { slideNumber, step });
 }
 
-async function settle(slideNumber) {
+async function settle(page, slideNumber) {
   const index = slideNumber - 1;
   await page.waitForFunction((target) => {
     const slides = document.querySelectorAll('.slide');
@@ -137,24 +123,115 @@ async function settle(slideNumber) {
   }));
 }
 
-for (let i = 0; i < plan.shots.length; i++) {
-  const shot = plan.shots[i];
-  if (i > 0) await page.keyboard.press('ArrowRight');
-  try {
-    await settle(shot.slide);
-  } catch (err) {
-    const state = await probe(shot.slide, shot.step);
-    await browser.close();
-    fail(`did not reach slide ${shot.slide} step ${shot.step}: ${err.message}`, state);
+async function advanceTo(page, index) {
+  for (let k = 0; k < index; k++) {
+    await page.keyboard.press('ArrowRight');
+    await settle(page, plan.shots[k + 1].slide);
   }
-  const state = await probe(shot.slide, shot.step);
+  await settle(page, plan.shots[index].slide);
+  const state = await probe(page, plan.shots[index].slide, plan.shots[index].step);
   if (!state.ok) {
-    await browser.close();
-    fail(`slide ${shot.slide} step ${shot.step} does not match the engine`, { shot, state });
+    throw new Error(`slide ${plan.shots[index].slide} step ${plan.shots[index].step} mismatch ${JSON.stringify(state)}`);
   }
-  mkdirSync(dirname(shot.png), { recursive: true });
-  await page.screenshot({ path: shot.png, fullPage: false });
-  console.log(`shot ${i + 1}/${plan.shots.length} slide ${shot.slide} step ${shot.step}`);
 }
 
-await browser.close();
+async function captureStills() {
+  let next = 0;
+  for (let attempt = 1; attempt <= 3 && next < plan.shots.length; attempt++) {
+    while (next < plan.shots.length && pngReady(plan.shots[next].png)) next += 1;
+    if (next >= plan.shots.length) return;
+    let browser;
+    try {
+      browser = await chromium.launch({
+        args: ['--disable-dev-shm-usage', '--disable-gpu'],
+      });
+      browser.on('disconnected', () => console.error('BROWSER_DISCONNECTED'));
+      const page = await openDeck(browser);
+      await advanceTo(page, next);
+      for (let i = next; i < plan.shots.length; i++) {
+        if (i !== next) {
+          await page.keyboard.press('ArrowRight');
+          await settle(page, plan.shots[i].slide);
+          const state = await probe(page, plan.shots[i].slide, plan.shots[i].step);
+          if (!state.ok) {
+            throw new Error(`slide ${plan.shots[i].slide} step ${plan.shots[i].step} mismatch ${JSON.stringify(state)}`);
+          }
+        }
+        mkdirSync(dirname(plan.shots[i].png), { recursive: true });
+        await page.screenshot({ path: plan.shots[i].png, fullPage: false });
+        if (!pngReady(plan.shots[i].png)) throw new Error(`screenshot too small: ${plan.shots[i].png}`);
+        console.log(`shot ${i + 1}/${plan.shots.length} slide ${plan.shots[i].slide} step ${plan.shots[i].step}`);
+        next = i + 1;
+      }
+    } catch (err) {
+      console.error(`stills attempt ${attempt} failed at shot ${next + 1}: ${err.message}`);
+      if (attempt === 3) fail(`per-step screenshots aborted: ${err.message}`);
+    } finally {
+      if (browser) await browser.close().catch(() => {});
+    }
+  }
+}
+
+async function captureVideo() {
+  const browser = await chromium.launch({
+    args: ['--disable-dev-shm-usage', '--disable-gpu'],
+  });
+  browser.on('disconnected', () => console.error('BROWSER_DISCONNECTED'));
+  const t0 = Date.now();
+  let context;
+  try {
+    context = await browser.newContext({
+      viewport: { width: 1920, height: 1080 },
+      recordVideo: { dir: plan.videoDir, size: { width: 1920, height: 1080 } },
+    });
+    const page = await context.newPage();
+    page.on('pageerror', (err) => console.log('PAGEERROR', err.message));
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    });
+    await page.goto(pathToFileURL(plan.deck).href, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
+    await page.evaluate(() => {
+      const scroller = document.querySelector('.slides-scroller');
+      if (!scroller) throw new Error('no .slides-scroller — not a frontend-slides deck');
+      const original = scroller.scrollTo.bind(scroller);
+      scroller.scrollTo = (options) => {
+        if (options && typeof options === 'object') {
+          return original({ ...options, behavior: 'instant' });
+        }
+        return original(options);
+      };
+    });
+    await page.locator('body').click({ position: { x: 8, y: 8 } });
+    await settle(page, plan.shots[0].slide);
+    const lead = Date.now() - t0;
+    console.log(`LEAD_MS ${lead}`);
+    for (let i = 0; i < plan.shots.length; i++) {
+      const start = Date.now();
+      if (i > 0) {
+        await page.keyboard.press('ArrowRight');
+        await settle(page, plan.shots[i].slide);
+      }
+      const remain = Math.max(0, plan.shots[i].holdMs - (Date.now() - start));
+      if (remain > 0) await page.waitForTimeout(remain);
+    }
+    const video = page.video();
+    await context.close();
+    context = null;
+    const file = await video.path();
+    console.log(`VIDEO ${file}`);
+  } finally {
+    if (context) await context.close().catch(() => {});
+    await browser.close().catch(() => {});
+  }
+}
+
+if (plan.mode === 'video') {
+  await captureVideo();
+} else if (plan.mode === 'stills') {
+  await captureStills();
+} else {
+  fail(`unknown recorder mode ${plan.mode}`);
+}

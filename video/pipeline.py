@@ -8,9 +8,17 @@ from pathlib import Path
 
 from video.deck import load_deck, resolve_deck_inputs, walk_states
 from video.lexicon import apply_lexicon, load_lexicon
-from video.mux import add_subtitles, assemble, hold_frames, probe
+from video.mux import (
+    DEFAULT_SUBTITLE_BAND,
+    SyncError,
+    add_subtitles,
+    assemble,
+    assemble_recording,
+    assert_av_sync,
+    hold_frames,
+)
 from video.narration import Script, check_against_deck, load_script
-from video.record import record_frames
+from video.record import RecorderAbort, capture, record_stills
 from video.srt import write_srt
 from video.threads import apply_thread_limit
 
@@ -37,12 +45,11 @@ def render(
     *,
     threads: int = 4,
     burn_in: bool = False,
+    subtitle_band: int = DEFAULT_SUBTITLE_BAND,
     pad: float | None = None,
     voice: str | None = None,
     speed: float | None = None,
-    precision: str = "int8",
-    model: Path | None = None,
-    voices: Path | None = None,
+    capture_mode: str = "auto",
     work_dir: Path | None = None,
     check_only: bool = False,
     synthesize=None,
@@ -100,12 +107,9 @@ def render(
 
     speaker = None
     if synthesize is None:
-        from video.tts import KokoroSpeaker, ensure_weights, wav_duration
+        from video.tts import KokoroSpeaker, wav_duration
 
-        model_path, voices_path = ensure_weights(precision, model, voices)
-        speaker = KokoroSpeaker(
-            model_path, voices_path, threads, script.lang, script.speed, script.voice,
-        )
+        speaker = KokoroSpeaker(threads, script.lang, script.speed, script.voice)
 
         def synthesize(text: str, dest: Path, _speaker=speaker) -> None:
             _speaker.write(text, dest)
@@ -129,7 +133,7 @@ def render(
         start = frame_cursor / FPS
         frame_cursor += frames
         end = frame_cursor / FPS
-        phonemes = speaker.phonemes(say) if speaker is not None else ""
+        phonemes = speaker.last_phonemes if speaker is not None else ""
         timed.append(TimedStep(
             cue.slide, cue.step, cue.text, say, audio_seconds, frames, start, end, phonemes,
         ))
@@ -137,37 +141,83 @@ def render(
         assembly.append((png, wav, frames))
         print(f"  audio {audio_seconds:.2f}s  hold {frames / FPS:.2f}s")
 
-    print("recording deck")
-    record_frames(html_path, shots)
-
+    holds = [step.end - step.start for step in timed]
+    timeline = frame_cursor / FPS
     silent_subs = work_dir / "picture.mp4"
-    print("muxing picture and audio")
-    assemble(assembly, silent_subs, fps=FPS, threads=threads)
+    pictures = _capture_synced(
+        html_path, shots, holds, assembly, work_dir, silent_subs,
+        capture_mode=capture_mode, threads=threads, timeline=timeline,
+    )
 
     srt_path = out.with_suffix(".srt")
     write_srt(srt_path, [(step.start, step.end, step.text) for step in timed])
-    print("muxing subtitles")
-    add_subtitles(silent_subs, srt_path, out, burn_in=burn_in, threads=threads)
-
-    info = probe(out)
-    duration = float(info["format"]["duration"])
+    print("muxing subtitles" + (" (bottom band burn-in)" if burn_in else " (mov_text only)"))
+    add_subtitles(
+        silent_subs, srt_path, out,
+        burn_in=burn_in, threads=threads, subtitle_band=subtitle_band,
+    )
+    video_s, audio_s = assert_av_sync(out, timeline)
     report = {
         "output": str(out),
         "srt": str(srt_path),
         "title": script.title,
         "voice": script.voice,
-        "precision": precision if speaker is not None else "synthetic",
+        "engine": "kokoro" if speaker is not None else "synthetic",
         "threads": threads,
         "fps": FPS,
         "pad_seconds": script.pad_seconds,
         "burn_in": burn_in,
-        "duration_seconds": frame_cursor / FPS,
-        "probed_duration_seconds": duration,
+        "subtitle_band": subtitle_band if burn_in else 0,
+        "capture": pictures,
+        "duration_seconds": timeline,
+        "video_seconds": video_s,
+        "audio_seconds": audio_s,
+        "probed_duration_seconds": video_s,
         "steps": [asdict(step) for step in timed],
     }
     timings = out.with_suffix(".timings.json")
     timings.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"wrote {out}")
-    print(f"duration {duration:.2f}s (timeline {frame_cursor / FPS:.2f}s)")
+    print(
+        f"duration video {video_s:.2f}s audio {audio_s:.2f}s "
+        f"timeline {timeline:.2f}s ({pictures})"
+    )
     print(f"captions {srt_path}")
     return report
+
+
+def _capture_synced(
+    html_path: Path,
+    shots: list[tuple[int, int, Path]],
+    holds: list[float],
+    assembly: list[tuple[Path, Path, int]],
+    work_dir: Path,
+    silent_subs: Path,
+    *,
+    capture_mode: str,
+    threads: int,
+    timeline: float,
+) -> str:
+    """Record, then rebuild from stills if the moving picture drifts from the audio."""
+    pictures = capture(html_path, shots, holds, work_dir, mode=capture_mode)
+    if pictures["mode"] == "video":
+        try:
+            print("muxing recordVideo against measured audio")
+            assemble_recording(
+                pictures["webm"], pictures["lead"], assembly, silent_subs,
+                fps=FPS, threads=threads,
+            )
+            return "video"
+        except (SyncError, RecorderAbort, SystemExit) as exc:
+            if capture_mode == "video":
+                raise SystemExit(str(exc)) from exc
+            print(f"recordVideo drifted from the audio ({exc}); rebuilding from screenshots")
+    if pictures["mode"] != "stills":
+        record_stills(html_path, shots, holds, work_dir)
+    print("muxing screenshots held for each measured audio duration")
+    assemble(assembly, silent_subs, fps=FPS, threads=threads)
+    try:
+        assert_av_sync(silent_subs, timeline)
+    except SyncError as exc:
+        raise SystemExit(str(exc)) from exc
+    return "stills"

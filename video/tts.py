@@ -1,180 +1,115 @@
-"""Kokoro ONNX, CPU only. Weights are downloaded on first use and never committed."""
+"""Kokoro speech on CPU. Weights and the spaCy model are downloaded at runtime."""
 
 from __future__ import annotations
 
-import re
-import urllib.request
+import subprocess
+import sys
 from pathlib import Path
 
-# model-files-v1.1 ships a duration head and a float speed input. int8 is the
-# CPU default (about 114 MB). fp32 is the full graph (about 326 MB).
-_RELEASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1"
-MODELS = {
-    "int8": f"{_RELEASE}/kokoro-v1.0.int8.onnx",
-    "fp16": f"{_RELEASE}/kokoro-v1.0.fp16.onnx",
-    "fp32": f"{_RELEASE}/kokoro-v1.0.onnx",
-}
-VOICES_URL = f"{_RELEASE}/voices-v1.0.bin"
-_MIN_BYTES = {"int8": 50_000_000, "fp16": 80_000_000, "fp32": 200_000_000, "voices": 10_000_000}
-
-_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+# misaki's English G2P loads this by name. The 3.8.0 wheel matches spaCy 3.8.x,
+# which is what kokoro 0.9.4 pulls in. Do not commit the wheel or the weights.
+SPACY_MODEL = "en_core_web_sm"
+SPACY_MODEL_WHEEL = (
+    "https://github.com/explosion/spacy-models/releases/download/"
+    "en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+)
+SAMPLE_RATE = 24000
+_LANG = {"en-us": "a", "en-gb": "b", "a": "a", "b": "b"}
 
 
-def cache_dir() -> Path:
-    import os
-    root = os.environ.get("HEP_KOKORO_CACHE")
-    if root:
-        path = Path(root)
+def ensure_spacy_model() -> str:
+    """Install ``en_core_web_sm`` if misaki would otherwise download it itself.
+
+    Kokoro's English frontend calls ``spacy.load("en_core_web_sm")`` the first
+    time a pipeline is built. A missing model used to fail the render, or
+    depend on misaki's own ``spacy.cli.download`` with no record of the pin.
+    """
+    try:
+        import spacy
+    except ImportError as exc:
+        raise SystemExit(
+            "spaCy is not installed. Kokoro's English phonemizer needs it, "
+            "and the model en_core_web_sm. Install env/requirements.in with Python 3.12."
+        ) from exc
+    if spacy.util.is_package(SPACY_MODEL):
+        print(f"kokoro: spaCy model {SPACY_MODEL} is installed")
+        return SPACY_MODEL
+
+    version = tuple(int(part) for part in spacy.__version__.split(".")[:2])
+    if version == (3, 8):
+        print(f"kokoro: downloading {SPACY_MODEL} ({SPACY_MODEL_WHEEL})")
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", SPACY_MODEL_WHEEL],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
     else:
-        path = Path.home() / ".cache" / "hep-explainer-toolkit" / "kokoro"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def _download(url: str, dest: Path, minimum: int) -> None:
-    if dest.is_file() and dest.stat().st_size >= minimum:
-        print(f"kokoro: using {dest} ({dest.stat().st_size / 1e6:.0f} MB)")
-        return
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    partial = dest.with_suffix(dest.suffix + ".partial")
-    print(f"kokoro: downloading {url}")
-    request = urllib.request.Request(url, headers={"User-Agent": "hep-explainer-toolkit/0.1"})
-    with urllib.request.urlopen(request, timeout=120) as response:
-        total = int(response.headers.get("Content-Length") or 0)
-        got = 0
-        last = -1
-        with partial.open("wb") as handle:
-            while True:
-                chunk = response.read(1 << 20)
-                if not chunk:
-                    break
-                handle.write(chunk)
-                got += len(chunk)
-                if total:
-                    pct = int(got * 20 / total)
-                    if pct != last:
-                        print(f"kokoro: {dest.name} {got / 1e6:.0f}/{total / 1e6:.0f} MB")
-                        last = pct
-    if partial.stat().st_size < minimum:
-        partial.unlink(missing_ok=True)
-        raise RuntimeError(f"download of {url} is only {got} bytes; expected at least {minimum}")
-    partial.replace(dest)
-    print(f"kokoro: saved {dest}")
-
-
-def ensure_weights(precision: str, model: Path | None, voices: Path | None) -> tuple[Path, Path]:
-    if precision not in MODELS:
-        raise ValueError(f"unknown precision {precision!r}; choose from {', '.join(MODELS)}")
-    if model is None:
-        name = Path(MODELS[precision]).name
-        model = cache_dir() / name
-        _download(MODELS[precision], model, _MIN_BYTES[precision])
-    elif not model.is_file():
-        raise FileNotFoundError(model)
-    if voices is None:
-        voices = cache_dir() / "voices-v1.0.bin"
-        _download(VOICES_URL, voices, _MIN_BYTES["voices"])
-    elif not voices.is_file():
-        raise FileNotFoundError(voices)
-    return model, voices
-
-
-def _split_for_tts(text: str, limit: int = 280) -> list[str]:
-    """Kokoro rejects a chunk past its phoneme limit. Break on sentences first."""
-    sentences = [part.strip() for part in _SENTENCE.split(text.strip()) if part.strip()]
-    if not sentences:
-        return []
-    chunks: list[str] = []
-    buf = ""
-    for sentence in sentences:
-        if len(sentence) > limit:
-            if buf:
-                chunks.append(buf)
-                buf = ""
-            words = sentence.split()
-            piece = ""
-            for word in words:
-                trial = word if not piece else f"{piece} {word}"
-                if len(trial) > limit and piece:
-                    chunks.append(piece)
-                    piece = word
-                else:
-                    piece = trial
-            if piece:
-                chunks.append(piece)
-            continue
-        trial = sentence if not buf else f"{buf} {sentence}"
-        if len(trial) > limit and buf:
-            chunks.append(buf)
-            buf = sentence
-        else:
-            buf = trial
-    if buf:
-        chunks.append(buf)
-    return chunks
+        print(
+            f"kokoro: spaCy {spacy.__version__} is not 3.8; "
+            f"downloading a compatible {SPACY_MODEL} via spaCy"
+        )
+        from spacy.cli import download
+        download(SPACY_MODEL)
+    if not spacy.util.is_package(SPACY_MODEL):
+        raise SystemExit(
+            f"{SPACY_MODEL} is still missing. Install it with:\n"
+            f"  pip install '{SPACY_MODEL_WHEEL}'"
+        )
+    print(f"kokoro: installed {SPACY_MODEL}")
+    return SPACY_MODEL
 
 
 class KokoroSpeaker:
-    def __init__(self, model: Path, voices: Path, threads: int, lang: str, speed: float, voice: str):
-        # Imported here so lexicon and deck tests do not load onnxruntime.
-        import numpy as np
-        import onnxruntime as ort
-        from kokoro_onnx import Kokoro
+    """hexgrad's ``kokoro`` package, forced onto the CPU torch wheel."""
 
-        self._np = np
-        options = ort.SessionOptions()
-        options.intra_op_num_threads = threads
-        options.inter_op_num_threads = 1
-        options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-        session = ort.InferenceSession(
-            str(model),
-            sess_options=options,
-            providers=["CPUExecutionProvider"],
-        )
-        # from_session reads this; InferenceSession does not set it itself.
-        session._model_path = str(model)
-        self.kokoro = Kokoro.from_session(session, str(voices))
-        self.lang = lang
+    def __init__(self, threads: int, lang: str, speed: float, voice: str):
+        import torch
+        from kokoro import KPipeline
+
+        if getattr(torch.version, "cuda", None):
+            raise SystemExit(
+                f"torch {torch.__version__} is a CUDA build. Install the CPU wheel:\n"
+                "  pip install torch==2.15.0+cpu --index-url https://download.pytorch.org/whl/cpu"
+            )
+        torch.set_num_threads(threads)
+        try:
+            torch.set_num_interop_threads(1)
+        except RuntimeError:
+            pass  # a previous call in this process already started the pool
+
+        code = _LANG.get(lang)
+        if code is None:
+            raise SystemExit(f"unsupported narration lang {lang!r}; use en-us or en-gb")
+        ensure_spacy_model()
+        # repo_id avoids the library's "defaulting repo_id" warning. Weights
+        # download into the Hugging Face cache on first use (~/.cache/huggingface).
+        self.pipeline = KPipeline(lang_code=code, repo_id="hexgrad/Kokoro-82M", device="cpu")
         self.speed = speed
         self.voice = voice
-        self.sample_rate = 24000
-
-    def phonemes(self, text: str) -> str:
-        try:
-            return str(self.kokoro.tokenizer.phonemize(text, lang=self.lang))
-        except TypeError:
-            return str(self.kokoro.tokenizer.phonemize(text))
-        except Exception as exc:  # phoneme log is diagnostic, not the product
-            return f"(phonemize failed: {exc})"
+        self.last_phonemes = ""
 
     def write(self, text: str, dest: Path) -> float:
+        import numpy as np
         import soundfile as sf
 
-        chunks = _split_for_tts(text)
-        if not chunks:
-            raise ValueError("nothing to synthesize")
-        pieces = []
-        rate = self.sample_rate
-        gap = int(0.12 * rate)
-        silence = self._np.zeros(gap, dtype=self._np.float32)
-        for index, chunk in enumerate(chunks):
-            samples, rate = self.kokoro.create(
-                chunk,
-                voice=self.voice,
-                speed=self.speed,
-                lang=self.lang,
-            )
-            samples = self._np.asarray(samples, dtype=self._np.float32)
-            if samples.size == 0:
-                raise RuntimeError(f"Kokoro returned no audio for: {chunk}")
-            if index:
-                pieces.append(silence)
-            pieces.append(samples)
-        audio = self._np.concatenate(pieces)
-        self.sample_rate = int(rate)
+        pieces: list[np.ndarray] = []
+        phonemes: list[str] = []
+        for result in self.pipeline(text, voice=self.voice, speed=self.speed):
+            audio = result.audio
+            if audio is None:
+                continue
+            samples = audio.detach().cpu().float().numpy().reshape(-1)
+            if samples.size:
+                pieces.append(samples)
+            if result.phonemes:
+                phonemes.append(result.phonemes)
+        if not pieces:
+            raise RuntimeError(f"Kokoro returned no audio for: {text}")
+        wave = np.concatenate(pieces).astype(np.float32, copy=False)
+        self.last_phonemes = " ".join(phonemes)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        sf.write(str(dest), audio, self.sample_rate)
-        return float(audio.shape[0]) / float(self.sample_rate)
+        sf.write(str(dest), wave, SAMPLE_RATE)
+        return float(wave.shape[0]) / float(SAMPLE_RATE)
 
 
 def wav_duration(path: Path) -> float:

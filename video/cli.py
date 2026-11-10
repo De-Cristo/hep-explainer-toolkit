@@ -19,19 +19,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("-n", "--narration", type=Path, help="Narration YAML (default: narration.yaml in the deck folder)")
     parser.add_argument("-o", "--out", type=Path, help="Output MP4 (default: <deck>/build/<name>.mp4)")
-    parser.add_argument("--burn-in", action="store_true", help="Draw the captions on the picture as well as embedding mov_text")
+    parser.add_argument(
+        "--burn-in",
+        action="store_true",
+        help="Also draw captions in a bottom band. The default is a soft mov_text track only, so axis labels stay visible",
+    )
+    parser.add_argument(
+        "--subtitle-band",
+        type=int,
+        default=180,
+        help="Height in pixels of the burned-in caption strip at the bottom of the 1080-tall frame (default: 180)",
+    )
     parser.add_argument("--threads", type=int, default=4, help="CPU thread cap for Kokoro and ffmpeg (default: 4)")
     parser.add_argument("--pad", type=float, default=None, help="Seconds of silence after each step (overrides the narration file)")
     parser.add_argument("--voice", default=None, help="Kokoro voice (default: af_sarah, or the narration file)")
     parser.add_argument("--speed", type=float, default=None, help="Speech rate, 0.5 to 2.0")
     parser.add_argument(
-        "--precision",
-        choices=("int8", "fp16", "fp32"),
-        default="int8",
-        help="Kokoro graph. int8 is the CPU default; fp32 is the full-precision graph (default: int8)",
+        "--capture",
+        choices=("auto", "video", "stills"),
+        default="auto",
+        help="auto tries Playwright recordVideo, then per-step screenshots if that aborts or drifts (default: auto)",
     )
-    parser.add_argument("--model", type=Path, help="Existing Kokoro ONNX file (skips the download)")
-    parser.add_argument("--voices", type=Path, help="Existing voices-v1.0.bin (skips the download)")
     parser.add_argument("--work-dir", type=Path, help="Where frames and wavs are written")
     parser.add_argument("--check", action="store_true", help="Check the narration against the deck and print the spoken text")
     return parser
@@ -50,12 +58,11 @@ def main(argv: list[str] | None = None) -> int:
             args.out,
             threads=args.threads,
             burn_in=args.burn_in,
+            subtitle_band=args.subtitle_band,
             pad=args.pad,
             voice=args.voice,
             speed=args.speed,
-            precision=args.precision,
-            model=args.model,
-            voices=args.voices,
+            capture_mode=args.capture,
             work_dir=args.work_dir,
             check_only=args.check,
         )
