@@ -332,6 +332,7 @@ async function captureVideo() {
         return original(options);
       };
     });
+    await waitContentReady(page);
     await page.locator('body').click({ position: { x: 8, y: 8 } });
     await settle(page, plan.shots[0].slide);
     const lead = Date.now() - t0;
