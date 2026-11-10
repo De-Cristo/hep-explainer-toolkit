@@ -19,7 +19,13 @@ def _write(path: Path, text: str) -> Path:
     return path
 
 
-def _deck_manifest(*, fit: bool = False) -> str:
+def _deck_manifest(*, fit: bool = False, include_narration: bool = True) -> str:
+    narration_file = """
+  - path: narration.txt
+    source:
+      type: arxiv
+      arxiv: "1808.08242"
+""" if include_narration else ""
     fit_file = """
   - path: fit.json
     source:
@@ -49,10 +55,7 @@ def _deck_manifest(*, fit: bool = False) -> str:
             source:
               type: arxiv
               arxiv: "1808.08242"
-          - path: narration.txt
-            source:
-              type: arxiv
-              arxiv: "1808.08242"
+        {narration_file}
         {fit_file}
         sources:
         {source}
@@ -66,7 +69,7 @@ class RenderJobIntegrityTest(unittest.TestCase):
             root = Path(root_tmp)
             external = Path(ext_tmp)
             slide = _write(root / "deck.html", "<div class='slide'>Public deck.</div>\n")
-            _write(root / "sources.yaml", _deck_manifest())
+            _write(root / "sources.yaml", _deck_manifest(include_narration=False))
             narration = _write(external / "words.yaml", "The mass is 125 GeV.\n")
             job = make_render_job(
                 root,
