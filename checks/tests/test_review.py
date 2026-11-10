@@ -149,10 +149,12 @@ class DefinitionAndReviewTest(unittest.TestCase):
     def test_comparison_requires_registered_support_claims(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _registry(Path(tmp))
-            text = path.read_text(encoding="utf-8").replace(
-                "                  - pol.diff_spectrum",
-                "                  - pol.missing",
+            original = path.read_text(encoding="utf-8")
+            text = original.replace(
+                "      - pol.diff_spectrum",
+                "      - pol.missing",
             )
+            self.assertNotEqual(original, text)
             path.write_text(text, encoding="utf-8")
             with self.assertRaises(ClaimRegistryError):
                 load_registry(path)
@@ -160,15 +162,17 @@ class DefinitionAndReviewTest(unittest.TestCase):
     def test_dependency_cycle_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _registry(Path(tmp))
-            text = path.read_text(encoding="utf-8").replace(
-                "                assumption_tags:\n"
-                "                  - reference_spectrum_fixed",
-                "                depends_on:\n"
-                "                  - pol.same_sm\n"
-                "                assumption_tags:\n"
-                "                  - reference_spectrum_fixed",
+            original = path.read_text(encoding="utf-8")
+            text = original.replace(
+                "    assumption_tags:\n"
+                "      - reference_spectrum_fixed",
+                "    depends_on:\n"
+                "      - pol.same_sm\n"
+                "    assumption_tags:\n"
+                "      - reference_spectrum_fixed",
                 1,
             )
+            self.assertNotEqual(original, text)
             path.write_text(text, encoding="utf-8")
             with self.assertRaises(ClaimRegistryError):
                 load_registry(path)
