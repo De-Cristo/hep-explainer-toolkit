@@ -56,9 +56,9 @@ scenes:
     claims:
       - id: strategy_words
         claim_ref: vhbb.strategy.vh
-        text: "In the CMS observation, the main contribution came from Higgs bosons produced together with a W or Z boson."
+        text: "In the CMS observation, the main contribution came from Higgs bosons produced with a W or Z boson."
       - id: separation_words
         claim_ref: vhbb.production.separation
-        text: "The accompanying boson belongs to the production process, while the Higgs still provides the bottom-quark pair."
+        text: "The W or Z belongs to the production process; the Higgs still supplies the bottom-quark pair."
       - id: topology_graph
         claim_ref: vhbb.zh.diagram
