@@ -1,0 +1,86 @@
+claims:
+  - id: vh.wh.production
+    kind: claim
+    origin: theory
+    statement: "Charged-current Higgs-strahlung proceeds through an off-shell W that produces WH, and the Higgs can couple to a bottom-quark pair."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Sections 1 and 3"
+    excerpt: excerpts/vh-wh.yaml
+    context:
+      model: SM
+      process: WH
+      use: explanatory_topology
+    assumptions:
+      - "The diagram is an explanatory tree-level topology rather than a complete amplitude representation."
+    caveats:
+      - "Generic q labels suppress flavour-mixing details."
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vh.wh.diagram
+    kind: diagram
+    origin: theory
+    statement: "The explanatory WH topology contains q qbar-prime W, W W H, and H b bbar vertices."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Sections 1 and 3"
+    excerpt: excerpts/vh-wh.yaml
+    context:
+      model: SM
+      process: WH
+      use: explanatory_topology
+    caveats:
+      - "The diagram is not a claim about a literal time ordering of microscopic interactions."
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vh.zh.production
+    kind: claim
+    origin: theory
+    statement: "Neutral-current Higgs-strahlung proceeds through an off-shell Z that produces ZH, with a flavour-diagonal quark-antiquark Z vertex."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Sections 1 and 3"
+    excerpt: excerpts/vh-zh.yaml
+    context:
+      model: SM
+      process: ZH
+      use: explanatory_topology
+    assumptions:
+      - "The diagram is an explanatory tree-level topology rather than a complete amplitude representation."
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+
+  - id: vh.zh.diagram
+    kind: diagram
+    origin: theory
+    statement: "The explanatory ZH topology contains q qbar Z, Z Z H, and H b bbar vertices."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Sections 1 and 3"
+    excerpt: excerpts/vh-zh.yaml
+    context:
+      model: SM
+      process: ZH
+      use: explanatory_topology
+    caveats:
+      - "The diagram is not a claim about a literal time ordering of microscopic interactions."
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
