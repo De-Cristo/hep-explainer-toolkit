@@ -16,7 +16,7 @@
 //   node record-deck.mjs plan.json
 
 import { chromium } from 'playwright';
-import { mkdirSync, statSync } from 'fs';
+import { mkdirSync, statSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
 import { pathToFileURL } from 'url';
 import { readFileSync } from 'fs';
@@ -81,6 +81,88 @@ function pngReady(file) {
   }
 }
 
+async function waitContentReady(page) {
+  await page.evaluate(async () => {
+    if (document.fonts) await document.fonts.ready;
+    const images = [...document.images];
+    await Promise.all(images.map(async (img) => {
+      if (!img.complete) {
+        await new Promise((resolve) => {
+          img.addEventListener('load', resolve, { once: true });
+          img.addEventListener('error', resolve, { once: true });
+        });
+      }
+      if (typeof img.decode === 'function') {
+        await img.decode().catch(() => {});
+      }
+    }));
+    if (window.MathJax?.startup?.promise) {
+      await window.MathJax.startup.promise.catch(() => {});
+    }
+    if (window.hepContentReady && typeof window.hepContentReady.then === 'function') {
+      await Promise.race([
+        window.hepContentReady,
+        new Promise((resolve) => setTimeout(resolve, 5000)),
+      ]);
+    }
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+    document.documentElement.dataset.hepExplainerReady = 'true';
+  });
+}
+
+async function qualityProbe(page, slideNumber, step) {
+  return page.evaluate(({ slideNumber, step }) => {
+    const slide = [...document.querySelectorAll('.slide')][slideNumber - 1];
+    if (!slide) return { slide: slideNumber, step, errors: ['missing slide'], overflow: [], brokenImages: [] };
+    const slideRect = slide.getBoundingClientRect();
+    const visible = (el) => {
+      const style = getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0.01
+        && rect.width > 0 && rect.height > 0;
+    };
+    const brokenImages = [...slide.querySelectorAll('img')]
+      .filter((img) => visible(img) && (!img.complete || img.naturalWidth === 0))
+      .map((img) => img.getAttribute('src') || '(image without src)');
+    const selectors = [
+      'img', 'svg', 'canvas', 'video',
+      '.slide-content > *', '.left-col > *', '.right-col > *',
+      '.two-col > *', '.dual-layout > *',
+    ].join(',');
+    const overflow = [];
+    for (const el of slide.querySelectorAll(selectors)) {
+      if (!visible(el)) continue;
+      const rect = el.getBoundingClientRect();
+      const tolerance = 2;
+      if (
+        rect.left < slideRect.left - tolerance
+        || rect.top < slideRect.top - tolerance
+        || rect.right > slideRect.right + tolerance
+        || rect.bottom > slideRect.bottom + tolerance
+      ) {
+        overflow.push({
+          tag: el.tagName.toLowerCase(),
+          class: el.className?.baseVal ?? el.className ?? '',
+          left: Math.round(rect.left - slideRect.left),
+          top: Math.round(rect.top - slideRect.top),
+          right: Math.round(rect.right - slideRect.left),
+          bottom: Math.round(rect.bottom - slideRect.top),
+        });
+      }
+    }
+    return {
+      slide: slideNumber,
+      step,
+      ready: document.documentElement.dataset.hepExplainerReady === 'true',
+      brokenImages,
+      overflow,
+      errors: [],
+    };
+  }, { slideNumber, step });
+}
+
 async function openDeck(browser) {
   const page = await browser.newPage({
     viewport: { width: 1920, height: 1080 },
@@ -113,10 +195,7 @@ async function openDeck(browser) {
     ].join('\n');
     document.head.appendChild(style);
   });
-  await Promise.race([
-    page.evaluate(() => (document.fonts ? document.fonts.ready : Promise.resolve())),
-    page.waitForTimeout(4000),
-  ]);
+  await waitContentReady(page);
   await page.locator('body').click({ position: { x: 8, y: 8 } });
   return page;
 }
@@ -181,9 +260,13 @@ async function advanceTo(page, index) {
 
 async function captureStills() {
   let next = 0;
+  const qaRows = [];
+  const writeQa = () => {
+    if (plan.qaPath) writeFileSync(plan.qaPath, JSON.stringify({ deck: plan.deck, states: qaRows.filter(Boolean) }, null, 2));
+  };
   for (let attempt = 1; attempt <= 3 && next < plan.shots.length; attempt++) {
     while (next < plan.shots.length && pngReady(plan.shots[next].png)) next += 1;
-    if (next >= plan.shots.length) return;
+    if (next >= plan.shots.length) { writeQa(); return; }
     let browser;
     try {
       browser = await chromium.launch(playwrightLaunchOptions());
@@ -203,6 +286,7 @@ async function captureStills() {
         mkdirSync(dirname(plan.shots[i].png), { recursive: true });
         await page.screenshot({ path: plan.shots[i].png, fullPage: false });
         if (!pngReady(plan.shots[i].png)) throw new Error(`screenshot too small: ${plan.shots[i].png}`);
+        qaRows[i] = await qualityProbe(page, plan.shots[i].slide, plan.shots[i].step);
         console.log(`shot ${i + 1}/${plan.shots.length} slide ${plan.shots[i].slide} step ${plan.shots[i].step}`);
         next = i + 1;
       }
@@ -213,6 +297,7 @@ async function captureStills() {
       await closeActive();
     }
   }
+  writeQa();
 }
 
 async function captureVideo() {
