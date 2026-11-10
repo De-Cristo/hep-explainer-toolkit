@@ -305,7 +305,10 @@ class MethodValidationAndPacketTest(unittest.TestCase):
                 public=True,
             )
         self.assertTrue(summary["review_ready"])
-        self.assertTrue(summary["release_ready"])
+        self.assertTrue(
+            summary["release_ready"],
+            summary["public_validation_error"],
+        )
         self.assertIsNone(summary["public_validation_error"])
 
     def test_public_packet_refuses_private_registry(self) -> None:
