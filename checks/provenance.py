@@ -36,7 +36,12 @@ _SKIP_NAMES = {
 _IMAGE = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".pdf"}
 _PLOT = {".json", ".csv"}
 # npm metadata is not a physics plot. A fit-result JSON still is.
-_NOT_PLOT = {"package.json", "package-lock.json"}
+_NOT_PLOT = {
+    "package.json",
+    "package-lock.json",
+    "reviews.json",
+    "review.json",
+}
 _NARRATION_SUFFIX = {".txt", ".md", ".markdown", ".srt", ".vtt", ".yaml", ".yml"}
 _NARRATION_NAME = re.compile(
     r"(narrat|voiceover|voice-over|voice_over|spoken|\btts\b|transcript|(?<![A-Za-z])script(?![A-Za-z]))",
