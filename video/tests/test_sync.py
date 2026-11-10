@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from video.mux import DEFAULT_SUBTITLE_BAND, burn_in_filter, durations_match
-from video.record import RecorderAbort, capture
+from video.record import RecorderAbort, capture, record_stills
 from video.tts import SPACY_MODEL, SPACY_MODEL_WHEEL
 
 
@@ -42,6 +42,24 @@ def test_record_video_abort_falls_back_to_stills(monkeypatch, tmp_path):
     assert result == {"mode": "stills"}
     assert stills.called
 
+
+def test_record_stills_drops_frames_from_previous_invocation(monkeypatch, tmp_path):
+    stale = tmp_path / "frame.png"
+    stale.write_bytes(b"x" * 9001)
+
+    monkeypatch.setattr("video.record._require_playwright", lambda: None)
+
+    def fake_run(plan, timeout):
+        assert timeout > 0
+        assert not stale.exists()
+        stale.write_bytes(b"fresh")
+        class Done:
+            stdout = ""
+        return Done()
+
+    monkeypatch.setattr("video.record._run_node", fake_run)
+    record_stills(Path("deck.html"), [(1, 0, stale)], [1.0], tmp_path)
+    assert stale.read_bytes() == b"fresh"
 
 def test_forced_video_mode_does_not_hide_an_abort(monkeypatch, tmp_path):
     def boom(*_args, **_kwargs):
