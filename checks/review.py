@@ -210,6 +210,11 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def save_reviews(path: Path, data: dict[str, object]) -> None:
+    """Atomically persist a review file."""
+    _write_json(path, data)
+
+
 def _write_json(path: Path, data: dict[str, object]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
