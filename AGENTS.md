@@ -15,6 +15,7 @@ Read the request and pick the smallest thing that answers it.
 | The same diagram moving | `manim` or `diagram` with `motion: build` | `python3 -m diagrams animate DIAGRAM.yaml -o build/clip.mp4` |
 | A deck of existing slides, narrated | the deck pipeline, not a scene file | `python3 render-video.py DECK/` |
 | A short narrated film made of any mix of the above | a scene file | `python3 -m video.explain SCENE.yaml -o build/name.mp4` |
+| A web blog or web report | not a slide deck | Follow [hep-web-report](upstream/hep-skills/skills/hep-web-report/SKILL.md). It does not replace a figure, a deck, or a narrated video. |
 
 Use a plot (`visual.kind: plot`, or `plots/`) only when the request is about a measured or toy distribution. Do not invent one for a theory explanation.
 
@@ -70,24 +71,75 @@ Every narration, equation, and diagram in the scene needs a claim. The claim nee
 
 The excerpt's arXiv id or DOI and its locator must be the same as the claim. An equation has to appear in the excerpt quote. A diagram's vertex list has to match the excerpt's `vertices:` list. Neither of those is the physics check. The physics check is the UFO. A citation whose excerpt was copied from a wrong diagram still fails.
 
-## 5. Before you finish
+## 5. Language skills, and the order of checks
 
-From the repository root:
+Narration, slide text, and an optional web report follow the language skills in the `upstream/hep-skills` submodule (Apache-2.0, pinned at `1c1800886839b3800d64fc7593b0f4023db5fdb1`, not copied). Read the skill file. Do not paste it into this repository.
+
+The language and style pass happens first. Number trace, provenance, and the citation and diagram checks run only after that, and only on the narration and slide files that will be rendered. They never run on a pre-rewrite draft.
+
+`video/pipeline.py` enforces this. It hashes the slide file and the narration file, runs `checks.language` on those bytes, and only then runs provenance, number trace, and `checks.diagrams` when a `scene.yaml` is beside the deck. Captions are taken from that sealed narration. If either file's sha256 differs from the hash the checks saw, the render stops.
+
+Do the same by hand when you are not using that command: finish the two language skills, write the polished files, then run the checks on those paths. Do not check a draft and render a rewrite.
+
+- Narration scripts and slide text follow [hep-presentation-craft](upstream/hep-skills/skills/hep-presentation-craft/SKILL.md).
+- Every narration, caption, and slide text gets a [hep-text-review](upstream/hep-skills/skills/hep-text-review/SKILL.md) pass before any check and before rendering.
+- A web blog or web report follows [hep-web-report](upstream/hep-skills/skills/hep-web-report/SKILL.md). The same order applies: polish the page, then run the checks on the file you will publish.
+
+The machine half of the style pass is:
 
 ```bash
+python3 -m checks.language scan PATH
+```
+
+Exit 1 means a banned phrase or a bullet over the word cap. A narration sentence over the cap is a warning, and a failure with `--strict`. The phrase list and the caps live in `checks/config/language.yaml`. The pipeline runs this before provenance and number trace. You do not have to run it twice.
+
+### hep-presentation-craft
+
+Slides and the words spoken over them. The procedure is the skill file. In short:
+
+- The title is a physical conclusion with an active verb, not a topic name.
+- One dominant visual, about 60–70% of the slide, plus two or three short bullets and one bottom-line sentence.
+- ASD-STE100: at most 20 words on a bullet and 25 in a descriptive sentence, at most three nouns in a row, one meaning per word, active voice, no filler, no double negatives.
+- The bullet cap is checked by `checks.language`. Noun stacks, assertion titles, and the bottom line are not. Those stay a reading of the skill.
+
+### hep-text-review
+
+Do this before any other check and before rendering narration, captions, or slide text. The procedure is the skill file. In short:
+
+- Ground the numbers. A figure that is not in a local artifact, a paper, or a DOI is unverified. Do not invent one. This repository traces numbers with `checks.traceability` and refuses unapproved inputs with `checks.confidentiality`. The skill's tier list and citation roles are stricter than those checks, and they are not reimplemented here.
+- Give each citation an explicit role. A generic citation is not enough when a primary definition exists.
+- One name for one thing. Sentences in the 10–30 word range. Active voice. Delete throat-clearing and the AI filler in Flavor D.
+- The filler phrases that are a fixed string are in `checks/config/language.yaml` and fail the lint. Voice, citation role, and whether a source actually supports the sentence are a reading of the skill, then the side-by-side citation report.
+
+### hep-web-report
+
+Use this when the request is a web blog or a web report, not a talk. The procedure is the skill file. In short:
+
+- Open with a Start Here section a reader can finish in about a minute: what is true now, what has to be true next, the obstacle in one sentence, a diagram from the detector to the electronics, and one analogy.
+- Group a long list of functions or registers into three or four clusters before the detailed tables. Register tables need a plain-language column.
+- The same controlled English as the presentation skill, including the approved-word substitutions. The unambiguous substitutions are in the language lint. "Since" versus "because", imperative steps, and double negatives are not, because a machine cannot tell them apart from ordinary prose.
+- A published page is one self-contained HTML file (theme, mathematics, diagrams). This repository does not ship that compiler. Follow the recipe in the skill when you build the page.
+
+## 6. Before you finish
+
+From the repository root, language first, then the checks on those same files:
+
+```bash
+python3 -m checks.language scan PATH
 python3 -m checks.diagrams check PATH/scene.yaml
 python3 -m checks.confidentiality scan .
+python3 -m checks.traceability check PATH --manifest sources.yaml
 python3 -m unittest discover -s checks/tests -t . -v
 pytest video/tests -q -m "not smoke"
 ```
 
-`checks.diagrams check` prints a side-by-side of each item and the excerpt it cites. Read it. Exit 0 is not a substitute for that reading when the claim is prose: the quote is stored and shown, and a person decides whether the sentence follows.
+`render-video.py` and `python3 -m video.explain` run that order themselves and refuse to render if the narration or slide hash changed after the checks. `checks.diagrams check` prints a side-by-side of each item and the excerpt it cites. Read it. Exit 0 is not a substitute for that reading when the claim is prose: the quote is stored and shown, and a person decides whether the sentence follows.
 
 Images, SVG, and narration files need a `sources.yaml` next to them (`files:` with `source.type` of `arxiv`, `hepdata`, `cds`, or a toy generator). The provenance rule accepts a new-style arXiv id (`NNNN.NNNNN`) only. An old id such as `hep-ph/0503172` is fine inside a scene citation and is not accepted as the `files:` source type. Commit PNG and SVG. Leave MP4, WAV, and Manim `media/` out of git. Write videos under `build/`.
 
-If the scene speaks a number, the traceability check still applies. `python3 -m checks.traceability check PATH --manifest sources.yaml`.
+If the scene speaks a number, the traceability check still applies, on the polished narration and slides.
 
-## 6. Examples
+## 7. Examples
 
 - `examples/theory/vh/` — `q qbar' → W* → WH`, `H → b bbar`, and `q qbar → Z* → ZH`. Stills are in `out/`. The narrated film is built, not committed.
 - `examples/theory/higgs/` — the potential, the vacuum value, and `M_H = \sqrt{2\lambda}\,\nu`, quoted from arXiv:0901.0241 (Dawson and Logan, TASI 2008). That paper writes `V = +\mu^2 \phi^\dagger\phi + \lambda (\phi^\dagger\phi)^2` with `\mu^2 < 0`, which is the same potential as `-\mu^2|\phi|^2 + \lambda|\phi|^4` after the sign of `\mu^2` is absorbed, and `M_H = \sqrt{2\lambda}\,\nu` with `\nu \simeq 246` GeV.

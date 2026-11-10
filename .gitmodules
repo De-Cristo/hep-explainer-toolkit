@@ -32,3 +32,6 @@
 [submodule "upstream/slidev"]
 	path = upstream/slidev
 	url = https://github.com/slidevjs/slidev.git
+[submodule "upstream/hep-skills"]
+	path = upstream/hep-skills
+	url = https://github.com/De-Cristo/hep-skills.git

@@ -1,0 +1,59 @@
+# Phrases the language skills tell an author to delete, and the word caps
+# that are counts rather than judgments. Edit this file to change the lint.
+# The skills themselves stay in upstream/hep-skills. This list is only the
+# subset a machine can apply without reading the physics.
+#
+# Sources, by skill:
+#   hep-text-review Flavor D (AI cliches)
+#   hep-presentation-craft Rule 5 (filler)
+#   hep-web-report Rule 4 (unapproved words with a single replacement)
+
+version: 1
+bullet_word_limit: 20
+narration_sentence_word_limit: 30
+
+phrases:
+  - id: delve
+    pattern: "delve"
+  - id: crucial
+    pattern: "crucial"
+  - id: notably
+    pattern: "notably"
+  - id: testament
+    pattern: "serves as a testament"
+  - id: important_to_note
+    pattern: "it is important to note"
+  - id: important_to_remember
+    pattern: "it is important to remember"
+  - id: clearly_visible
+    pattern: "as is clearly visible"
+  - id: needless_to_say
+    pattern: "needless to say"
+  - id: basically
+    pattern: "basically"
+  - id: essentially
+    pattern: "essentially"
+  - id: relatively
+    pattern: "relatively"
+  - id: cutting_edge
+    pattern: "cutting-edge"
+  - id: cutting_edge_words
+    pattern: "cutting edge"
+  - id: utmost_importance
+    pattern: "of utmost importance"
+  - id: prior_to
+    pattern: "prior to"
+  - id: subsequent_to
+    pattern: "subsequent to"
+  - id: in_order_to
+    pattern: "in order to"
+  - id: is_capable_of
+    pattern: "is capable of"
+  - id: it_is_recommended_that
+    pattern: "it is recommended that"
+  - id: utilize
+    pattern: "utilize"
+  - id: utilise
+    pattern: "utilise"
+  - id: commence
+    pattern: "commence"

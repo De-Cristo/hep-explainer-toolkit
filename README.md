@@ -38,7 +38,7 @@ What already links, and what still has to be adapted for HEP (asset library, Kok
 | `anim/` | Manim scenes, the HEP asset library, Kokoro voiceover |
 | `video/` | Step recording, TTS, SRT, ffmpeg, and the paper-to-video mode |
 | `checks/` | CMS labels, confidentiality, claim checks, lint |
-| `upstream/` | The eleven upstream repositories as git submodules, pinned, not copied |
+| `upstream/` | The upstream repositories as git submodules, pinned, not copied |
 | `INVENTORY.md` | Survey of what links directly and what must be adapted for HEP |
 
 Upstream source stays in the submodules. Do not vendor it into this tree.
@@ -77,10 +77,11 @@ Recorded 2026-11-09. Each licence is the upstream project's own. This repository
 | `upstream/awesome-claude-video-skills` | [zhuyansen/awesome-claude-video-skills](https://github.com/zhuyansen/awesome-claude-video-skills) | `main` | `366da94c737a0517856017b1248109e02622ac18` | CC0 1.0 Universal |
 | `upstream/cms-plotting` | [DickyChant/cms-plotting](https://github.com/DickyChant/cms-plotting) | `main` | `75a342efcd0beb30a33bb27f6e640278ca50f788` | MIT License |
 | `upstream/frontend-slides-PKU` | [De-Cristo/frontend-slides-PKU](https://github.com/De-Cristo/frontend-slides-PKU) | `feat/engine-updates-umd` | `5335c3f47169cd311a81bb6161f65d8069d656c1` | MIT License |
+| `upstream/hep-skills` | [De-Cristo/hep-skills](https://github.com/De-Cristo/hep-skills) | `main` | `1c1800886839b3800d64fc7593b0f4023db5fdb1` | Apache License 2.0 |
 | `upstream/manim-voiceover` | [ManimCommunity/manim-voiceover](https://github.com/ManimCommunity/manim-voiceover) | `main` | `3dc0d95d2f1d9d0937872b3dd68c7b38c4dfc96a` | MIT License |
 | `upstream/manim` | [ManimCommunity/manim](https://github.com/ManimCommunity/manim) | `main` | `e80274a2586c3c2f8d72600fe873e5f7971c0c9c` | MIT License |
 | `upstream/motion-canvas` | [motion-canvas/motion-canvas](https://github.com/motion-canvas/motion-canvas) | `main` | `7b91435c301d530351dcf5ebb91dd139c002e405` | MIT License |
 | `upstream/plotlyhep` | [DickyChant/plotlyhep](https://github.com/DickyChant/plotlyhep) | `main` | `49fe516c52590b45d041f0bd2d57e2ec15d5b27f` | BSD 3-Clause License |
 | `upstream/slidev` | [slidevjs/slidev](https://github.com/slidevjs/slidev) | `main` | `437f139ccd4c8482a193b217922e7800a5b3baec` | MIT License |
 
-`awesome-claude-video-skills` is a CC0 list of other people's video skills, not a single library. `frontend-slides-PKU` describes itself as a HEP slide skill and already points at plotlyhep. Read each upstream `LICENSE` before redistributing that submodule's code.
+`awesome-claude-video-skills` is a CC0 list of other people's video skills, not a single library. `frontend-slides-PKU` describes itself as a HEP slide skill and already points at plotlyhep. `hep-skills` is the language-skill suite (presentation craft, text review, web report), pinned at the commit above and not copied into this tree. Read each upstream `LICENSE` before redistributing that submodule's code.

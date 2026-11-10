@@ -18,3 +18,5 @@ jobs:
         run: python -m unittest discover -s checks/tests -t . -v
       - name: Confidentiality gate
         run: python -m checks.confidentiality scan .
+      - name: Language lint
+        run: python -m checks.language scan .

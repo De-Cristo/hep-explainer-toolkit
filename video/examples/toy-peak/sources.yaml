@@ -1,5 +1,39 @@
 # Toy-peak deck for the video pipeline. Not a CMS result.
 # examples/toy/emit.py regenerates these files; the hashes must match.
+# The numbers below are the same simulated placeholders, so the trace
+# check has a local file to read. They are not a measurement.
+allow:
+  - id: toy_chrome
+    kind: literal
+    values: [1, 10]
+sources:
+  - id: toy_centre
+    value: 125
+    unit: GeV
+    source:
+      type: datacard
+      path: toy_values.txt
+      key: centre
+  - id: toy_chi2
+    value: 1.1
+    source:
+      type: datacard
+      path: toy_values.txt
+      key: chi2
+  - id: toy_energy
+    value: 13.6
+    unit: TeV
+    source:
+      type: datacard
+      path: toy_values.txt
+      key: energy
+  - id: toy_lumi
+    value: 10
+    unit: "fb-1"
+    source:
+      type: datacard
+      path: toy_values.txt
+      key: lumi
 files:
   - path: deck.html
     source:
