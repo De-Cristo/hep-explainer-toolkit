@@ -18,6 +18,7 @@ import json
 import sys
 from pathlib import Path
 
+from checks.claims import ClaimRegistry, ClaimRegistryError, load_registry
 from checks.citations import (
     CitationReport,
     Row,
@@ -58,6 +59,7 @@ def check_path(path: Path) -> CitationReport:
     if not isinstance(scenes, list) or not scenes:
         raise SceneError(f"{path} needs a non-empty scenes list")
     model = load_model()
+    registry = _load_claim_registry(path, document)
     report = CitationReport()
     seen: set[str] = set()
     for index, scene in enumerate(scenes, start=1):
@@ -67,11 +69,18 @@ def check_path(path: Path) -> CitationReport:
         if scene_id in seen:
             raise SceneError(f"duplicate scene id {scene_id}")
         seen.add(scene_id)
-        _check_scene(report, path, scene_id, scene, model)
+        _check_scene(report, path, scene_id, scene, model, registry)
     return report
 
 
-def _check_scene(report: CitationReport, path: Path, scene_id: str, scene: dict, model) -> None:
+def _check_scene(
+    report: CitationReport,
+    path: Path,
+    scene_id: str,
+    scene: dict,
+    model,
+    registry: ClaimRegistry | None,
+) -> None:
     narration = normalize_space(str(scene.get("narration") or ""))
     visual = scene.get("visual") or {}
     if not isinstance(visual, dict):
@@ -82,9 +91,13 @@ def _check_scene(report: CitationReport, path: Path, scene_id: str, scene: dict,
     motion = str(visual.get("motion") or "still")
     if motion not in _MOTIONS:
         raise SceneError(f"{scene_id}: visual.motion must be still or build")
-    claims = scene.get("claims")
-    if not isinstance(claims, list):
+    raw_claims = scene.get("claims")
+    if not isinstance(raw_claims, list):
         raise SceneError(f"{scene_id}: claims must be a list")
+    claims = [
+        _resolve_scene_claim(path, scene_id, claim, registry)
+        for claim in raw_claims
+    ]
 
     diagram = _load_diagram(path, visual) if _needs_diagram(visual, kind) else None
     equations = _equations(visual)
@@ -146,6 +159,67 @@ def _check_scene(report: CitationReport, path: Path, scene_id: str, scene: dict,
             ))
     if diagram is not None:
         _check_drawing(report, scene_id, diagram, model)
+
+
+def _load_claim_registry(scene_path: Path, document: dict) -> ClaimRegistry | None:
+    raw = document.get("claim_registry")
+    if not raw:
+        return None
+    try:
+        registry_path = resolve_inside(repo_root(), scene_path.parent, str(raw))
+    except SceneError:
+        raise
+    if not registry_path.is_file():
+        raise SceneError(f"claim registry not found: {raw}")
+    try:
+        return load_registry(registry_path)
+    except ClaimRegistryError as exc:
+        raise SceneError(str(exc)) from exc
+
+
+def _resolve_scene_claim(
+    scene_path: Path,
+    scene_id: str,
+    raw: object,
+    registry: ClaimRegistry | None,
+) -> dict:
+    if not isinstance(raw, dict) or "id" not in raw:
+        raise SceneError(f"{scene_id}: each claim needs an id")
+    result = dict(raw)
+    ref = str(result.get("claim_ref") or "").strip()
+    if not ref:
+        return result
+    if registry is None:
+        raise SceneError(
+            f"{scene_id}/{result['id']}: claim_ref {ref!r} needs claim_registry"
+        )
+    try:
+        canonical = registry.get(ref)
+    except ClaimRegistryError as exc:
+        raise SceneError(str(exc)) from exc
+
+    if "citation" in result or "excerpt" in result:
+        raise SceneError(
+            f"{scene_id}/{result['id']}: claim_ref owns citation/excerpt; "
+            "do not duplicate registry evidence in the scene"
+        )
+    expected_kind = "claim" if canonical.kind in {"claim", "number"} else canonical.kind
+    local_kind = str(result.get("kind") or expected_kind)
+    if local_kind != expected_kind:
+        raise SceneError(
+            f"{scene_id}/{result['id']}: kind {local_kind!r} does not match "
+            f"registry claim {ref!r} ({canonical.kind})"
+        )
+    result["kind"] = local_kind
+    result["citation"] = canonical.citation
+    result["_excerpt_path"] = canonical.excerpt
+    result["_claim_ref"] = ref
+    result["_canonical_statement"] = canonical.statement
+    if local_kind == "equation" and not result.get("tex"):
+        result["tex"] = canonical.tex
+    if local_kind == "claim" and not result.get("text"):
+        result["text"] = canonical.statement
+    return result
 
 
 def _needs_diagram(visual: dict, kind: str) -> bool:
@@ -233,8 +307,9 @@ def _check_claim(
         ))
         return
     problems = _citation_problems(citation)
+    excerpt_path = claim.get("_excerpt_path")
     excerpt_raw = claim.get("excerpt")
-    if not excerpt_raw:
+    if excerpt_path is None and not excerpt_raw:
         problems.append("no excerpt path")
     if problems:
         report.add(Row(
@@ -243,11 +318,14 @@ def _check_claim(
             item_body, "",
         ))
         return
-    try:
-        excerpt_path = resolve_inside(repo_root(), scene_path.parent, str(excerpt_raw))
-    except SceneError as exc:
-        report.add(Row(scene_id, claim_id, "FAIL", str(exc), item_body, ""))
-        return
+    if excerpt_path is None:
+        try:
+            excerpt_path = resolve_inside(repo_root(), scene_path.parent, str(excerpt_raw))
+        except SceneError as exc:
+            report.add(Row(scene_id, claim_id, "FAIL", str(exc), item_body, ""))
+            return
+    else:
+        excerpt_path = Path(excerpt_path)
     if not excerpt_path.is_file():
         report.add(Row(
             scene_id, claim_id, "FAIL",
@@ -288,6 +366,9 @@ def _check_claim(
                         f"excerpt: {diagram_key(excerpt_vertices)}"
                     )
     excerpt_body = _excerpt_body(excerpt)
+    canonical = normalize_space(str(claim.get("_canonical_statement") or ""))
+    if canonical and canonical != normalize_space(item_body):
+        excerpt_body = "canonical claim:\n" + canonical + "\n\n" + excerpt_body
     if mismatch:
         report.add(Row(
             scene_id, claim_id, "FAIL",
@@ -295,9 +376,12 @@ def _check_claim(
             item_body, excerpt_body,
         ))
         return
+    note = _pass_note(kind)
+    if claim.get("_claim_ref"):
+        note += f"; claim_ref {claim['_claim_ref']}"
     report.add(Row(
         scene_id, claim_id, "PASS",
-        _pass_note(kind),
+        note,
         item_body, excerpt_body,
     ))
 
