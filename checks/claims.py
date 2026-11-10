@@ -28,7 +28,7 @@ from checks.citations import (
 from checks.yamlsubset import YamlError, load as load_yaml
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
-_KINDS = {"claim", "number", "equation", "diagram"}
+_KINDS = {"claim", "number", "equation", "diagram", "definition"}
 _ORIGINS = {"theory", "measurement", "derived", "illustrative", "definition"}
 _REVIEW = {
     "source": {"declared", "pending"},
@@ -40,6 +40,15 @@ _REVIEW = {
 
 class ClaimRegistryError(ValueError):
     """A claim registry is malformed or internally inconsistent."""
+
+
+@dataclass(frozen=True)
+class Comparison:
+    id: str
+    left: str
+    right: str
+    same_when: tuple[str, ...]
+    differs_when: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -56,6 +65,8 @@ class Claim:
     context: dict[str, object]
     assumptions: tuple[str, ...]
     caveats: tuple[str, ...]
+    depends_on: tuple[str, ...]
+    assumption_tags: tuple[str, ...]
     review: dict[str, str]
 
     @property
@@ -72,6 +83,26 @@ class Claim:
 class ClaimRegistry:
     path: Path
     claims: dict[str, Claim]
+    comparisons: tuple[Comparison, ...] = ()
+
+    def effective_assumptions(self, claim_id: str) -> tuple[str, ...]:
+        """Return explicit and upstream assumptions without duplication."""
+        seen_claims: set[str] = set()
+        values: list[str] = []
+
+        def visit(current: str) -> None:
+            if current in seen_claims:
+                return
+            seen_claims.add(current)
+            claim = self.get(current)
+            for dep in claim.depends_on:
+                visit(dep)
+            for value in (*claim.assumption_tags, *claim.assumptions):
+                if value not in values:
+                    values.append(value)
+
+        visit(claim_id)
+        return tuple(values)
 
     def get(self, claim_id: str) -> Claim:
         try:
