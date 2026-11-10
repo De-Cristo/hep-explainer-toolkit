@@ -13,6 +13,7 @@ exclude_dir_names:
   - node_modules
   - __pycache__
   - media
+  - build
   - .venv
   - venv
 

@@ -5,6 +5,8 @@
 *.mp3
 # Manim writes frames, partial movies, and TeX caches here.
 media/
+# Narrated renders from video.explain and local LaTeX work.
+build/
 
 # Model weights. Kokoro downloads these at runtime; do not commit them.
 *.onnx

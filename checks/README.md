@@ -229,6 +229,21 @@ The default allow list is [`config/traceability_allow.yaml`](config/traceability
 
 Add a `literal` rule in the manifest for other non-physics numbers (`kind: literal`, `values: [1920, 1080]`).
 
+## 3. Scene citations and diagrams
+
+`python3 -m checks.diagrams check SCENE.yaml` reads a scene file (the format is in [AGENTS.md](../AGENTS.md)). Exit 0 when every row passes, 1 when a row fails, 2 when the file cannot be read. The text it prints is the side-by-side review: the claim or vertex on one side, the excerpt on the other. `--report FILE` writes that text. `--json` prints the rows as well.
+
+A citation is not enough.
+
+- A narration must be repeated as a `kind: claim` whose text is the narration, with an arXiv id or a DOI, a locator that contains a number, and an excerpt file in the repository. The excerpt has to name the same id and the same locator, and its quote has to be a real passage (at least 40 characters).
+- An equation must appear in that quote. Spacing, `\left`/`\right`, and `\dagger` versus `\dag` are ignored. A different formula with the same citation fails.
+- A diagram must use the same vertex list as the excerpt, and every vertex must be a vertex of the Standard Model UFO in [`models/sm-ufo`](models/PROVENANCE.md). The UFO is the FeynRules `sm` model from MadGraph5_aMC@NLO commit `a5b17913ef0b6e1c872016f94d0fb610207dab47`. Digests are in `models/sm-ufo/SHA256SUMS`. The checker executes `particles.py` and `vertices.py`. It does not keep a second list of allowed vertices.
+- Fermion arrows are judged from the same model. The arrow on an antiparticle has to point against the momentum. A boson does not get a fermion arrow. An explicit `arrow:` is what will be drawn, so a flipped arrow fails even when the vertex list is right.
+
+`q` and `qbar` are one flavour. `q` and `qbar'` are two flavours. A same-flavour `q qbar W` vertex fails because no charge-conserving assignment is in the UFO. A `Z` or photon with `q` and `qbar'` fails because those vertices are not in the UFO even when a charge assignment exists. The same rule rejects a photon coupled to neutrinos.
+
+The check does not download the paper. A prose claim can pass while the quote does not support the sentence. That pair is in the report for a person to read.
+
 ## Blind spots
 
 Confidentiality:

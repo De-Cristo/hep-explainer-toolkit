@@ -1,0 +1,8 @@
+arxiv: "hep-ph/0503172"
+doi: "10.1016/j.physrep.2007.10.004"
+locator: "Sections 1 and 3"
+quote: 'The process is q_1 (p_1) \bar{q}_2 (p_2) \to V^* \to V H. Reduced fermion couplings are \hat a_f = 2 I_f^3, \hat v_f = 2 I_f^3 - 4 Q_f s_W^2 for V=Z and \hat v_f = \hat a_f = \sqrt{2} for V=W. The Higgs-fermion coupling is g_{Hff} = i m_f / v.'
+vertices:
+  - ["q", "qbar", "Z"]
+  - ["Z", "Z", "H"]
+  - ["H", "b", "bbar"]

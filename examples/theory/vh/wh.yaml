@@ -1,0 +1,46 @@
+# q qbar' -> W* -> W H, H -> b bbar. Arrows are filled by the UFO helper.
+positions:
+  q: [-4.4, 1.5]
+  qbar: [-4.4, -1.5]
+  v1: [-2.0, 0.0]
+  v2: [0.8, 0.0]
+  w: [3.2, 1.6]
+  v3: [2.6, -1.4]
+  b: [4.8, -0.5]
+  bbar: [4.8, -2.4]
+vertices:
+  - id: v1
+    particles: ["q", "qbar'", "W"]
+  - id: v2
+    particles: ["W", "W", "H"]
+  - id: v3
+    particles: ["H", "b", "bbar"]
+lines:
+  - id: q_in
+    particle: q
+    source: q
+    target: v1
+  - id: qbar_in
+    particle: "qbar'"
+    source: qbar
+    target: v1
+  - id: wstar
+    particle: "W*"
+    source: v1
+    target: v2
+  - id: w_out
+    particle: W
+    source: v2
+    target: w
+  - id: higgs
+    particle: H
+    source: v2
+    target: v3
+  - id: b_out
+    particle: b
+    source: v3
+    target: b
+  - id: bbar_out
+    particle: bbar
+    source: v3
+    target: bbar
