@@ -379,6 +379,39 @@ Use this when the request is a web blog or a web report, not a talk. The procedu
 - The same controlled English as the presentation skill, including the approved-word substitutions. The unambiguous substitutions are in the language lint. "Since" versus "because", imperative steps, and double negatives are not, because a machine cannot tell them apart from ordinary prose.
 - A published page is one self-contained HTML file (theme, mathematics, diagrams). This repository does not ship that compiler. Follow the recipe in the skill when you build the page.
 
+## 5.45. Generate media only from a current approved handoff
+
+Before an authoring agent starts a deck from `approved-authoring.json`, verify that the approval state is still current:
+
+```bash
+python3 -m checks.authoring verify-handoff build/approved-authoring.json
+```
+
+Verification fails if the handoff JSON itself was altered, or if the scene, brief, registry, review file, claim/evidence digest, private local source, used claim set, or approval state changed after the handoff was generated.
+
+To create an editable starting deck on the primary frontend-slides engine:
+
+```bash
+python3 -m slides.scaffold build/approved-authoring.json \
+  --out-dir build/deck \
+  --author "Name" \
+  --event "Authoring review"
+```
+
+The command uses `upstream/frontend-slides-PKU/assets/templates/Empty_template.html` by default; initialize the submodule or pass `--template`.
+
+The scaffold:
+- creates one slide per reviewed reasoning scene;
+- carries the reviewed takeaway and audience-specific claim wording;
+- carries method-validation boundaries;
+- maps narration segments to semantic `data-scene` / `data-cue` states;
+- writes matching `narration.yaml`;
+- keeps raw evidence excerpts out of the deck;
+- marks itself visibly as an **AUTHORING SCAFFOLD**;
+- records `release_ready: false`.
+
+Do not remove the scaffold warning and publish it as-is. Replace visual-intent placeholders with real figures, plots, diagrams, or animations, then run cue parity, visual QA, scientific checks, and the normal release review.
+
 ## 5.5. Keep live-slide and video cues identical
 
 When a storyboard cue is meant to correspond to a live reveal, label the slide with `data-scene="SCENE_ID"` and the reveal element with `data-cue="CUE_ID"` in addition to the frontend engine's existing `class="st" data-st="N"`.
