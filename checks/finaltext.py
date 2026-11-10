@@ -132,11 +132,12 @@ def seal_render_job(job: RenderJob) -> Seal:
         )
 
     print("provenance, number trace, and scene checks on the explicit render job")
-    for name, problems in (
-        ("provenance", _job_provenance(job)),
-        ("traceability", _job_traceability(job)),
-        ("diagrams", _job_diagrams(job)),
+    for name, runner in (
+        ("provenance", _job_provenance),
+        ("traceability", _job_traceability),
+        ("diagrams", _job_diagrams),
     ):
+        problems = runner(job)
         _require_same(snap, f"during {name}")
         if problems:
             raise FinalTextError(
