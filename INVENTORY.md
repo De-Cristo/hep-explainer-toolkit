@@ -28,6 +28,8 @@ Initial upstream survey: 2026-11-09. The repository now contains working HEP-spe
 | Explicit candidate-to-claim promotion | implemented + tested | one-candidate `checks.authoring promote`, interpretation reset to pending |
 | Approval-gated authoring handoff | implemented + tested | `checks.authoring handoff` JSON for downstream slide/video authoring |
 | Local scientific reviewer UI | implemented + tested | `python -m checks.review_ui ...`; approve/reject, exact evidence, assumptions, audience wording |
+| Approved handoff integrity verification | implemented + tested | scene/brief/registry/reviews/claim digests checked by `checks.authoring verify-handoff` |
+| Reviewed frontend slide + narration scaffold | implemented + tested | `python -m slides.scaffold ...`; semantic cue parity, raw evidence excluded, never release-ready by default |
 | Private review UI network boundary | implemented + tested | private registries loopback-only, CSRF, CSP/no-store, no external assets |
 | Multi-audience end-to-end benchmark | implemented + tested | `examples/vhbb/` public, student, and specialist variants |
 | Synthetic scene render in CI | implemented + tested | `video/tests/test_explain_integration.py` |
