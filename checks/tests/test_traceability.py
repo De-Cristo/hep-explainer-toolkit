@@ -182,6 +182,25 @@ class NumberParserTest(unittest.TestCase):
         with self.assertRaises(ManifestError):
             load_manifest(folder / "sources.yaml")
 
+    def test_narration_yaml_only_exposes_spoken_text(self) -> None:
+        folder = Path(tempfile.mkdtemp())
+        path = _write(
+            folder / "narration.yaml",
+            """title: Toy
+speed: 1.7
+pad_seconds: 0.35
+steps:
+  - slide: 9
+    step: 4
+    text: >
+      The visible physics value is 125 GeV.
+""",
+        )
+        document = load_document(path, "narration")[0]
+        self.assertIn("125 GeV", document.text)
+        self.assertNotIn("1.7", document.text)
+        self.assertNotIn("0.35", document.text)
+        self.assertNotIn("slide: 9", document.text)
     def test_html_footer_page_number_is_exempt(self) -> None:
         html = """
         <div class="slide"><p>TOY mass 1.2 GeV.</p></div>
