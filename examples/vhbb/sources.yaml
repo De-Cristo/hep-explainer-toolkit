@@ -33,11 +33,7 @@ sources:
       arxiv: "1808.08242"
   - id: vh_mu
     value: 1.01
-    source:
-      type: paper
-      arxiv: "1808.08242"
-  - id: vh_mu_uncertainty
-    value: 0.22
+    uncertainty: 0.22
     source:
       type: paper
       arxiv: "1808.08242"
