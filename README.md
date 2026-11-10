@@ -2,6 +2,8 @@
 
 Environment setup for Python 3.12: [SETUP.md](SETUP.md).
 
+How an agent should choose a figure, a diagram, an animation, slides, or a narrated video, and which checks are mandatory: [AGENTS.md](AGENTS.md).
+
 Turn public high-energy physics results into professional slides, animations, short clear narrated explainer videos, and publication-ready exports. The pieces are upstream tools linked as git submodules. This repository is the HEP-specific layer on top of them: what to run, in which order, and which physics rules the output has to satisfy.
 
 > **This repository is public.** Never commit internal or unapproved CMS material. That includes plots, numbers, slides, and videos. The only figures, values, decks, and clips that may be added are approved public results, or toy and simulated examples. If a file is not clearly public, leave it out.

@@ -1,0 +1,13 @@
+files:
+  - path: out/potential.png
+    source:
+      type: arxiv
+      arxiv: "0901.0241"
+  - path: out/vev.png
+    source:
+      type: arxiv
+      arxiv: "0901.0241"
+  - path: out/mass.png
+    source:
+      type: arxiv
+      arxiv: "0901.0241"

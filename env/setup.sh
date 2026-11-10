@@ -52,7 +52,7 @@ if ((${#latex_missing[@]} > 0)); then
   echo "warning: missing on PATH: ${latex_missing[*]}" >&2
   echo "Manim MathTex and Tex need LaTeX. Manim Text works without it." >&2
   echo "This script does not use sudo. Recommended Debian/Ubuntu packages:" >&2
-  echo "  sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended dvisvgm cm-super" >&2
+  echo "  sudo apt-get install -y texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-pictures texlive-science texlive-luatex dvisvgm cm-super poppler-utils" >&2
 else
   echo "latex $(command -v latex)"
   echo "dvisvgm $(command -v dvisvgm)"

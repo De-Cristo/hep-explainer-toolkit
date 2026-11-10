@@ -1,0 +1,17 @@
+files:
+  - path: out/wh.png
+    source:
+      type: arxiv
+      arxiv: "1610.07922"
+  - path: out/wh.svg
+    source:
+      type: arxiv
+      arxiv: "1610.07922"
+  - path: out/zh.png
+    source:
+      type: arxiv
+      arxiv: "1610.07922"
+  - path: out/zh.svg
+    source:
+      type: arxiv
+      arxiv: "1610.07922"

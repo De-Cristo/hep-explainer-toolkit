@@ -4,7 +4,13 @@ The narrated film, and the publication package around it.
 
 The direct path from a deck: `test-steps.mjs` in `upstream/frontend-slides-PKU` already steps a frontend-slides deck in headless Chromium at 1920×1080. This folder is the v0.1 glue from that walk to an MP4: a narration file, Kokoro speech, one settled frame per step, SRT captions, and ffmpeg. It does not copy the slide engine and it does not modify the submodule. The recorder repeats the `test-steps.mjs` contract (spoof `navigator.webdriver`, 1920×1080, one ArrowRight per reveal) because that script has no exports.
 
-Two later modes stay out of this version. Paper or analysis note to a talk video follows the Paper2Video shape. Concept to a short explainer follows Code2Video or TheoremExplainAgent and renders through `anim/`. Neither is wired here, and Manim is not a dependency of this path.
+A theory scene, rather than a slide deck, is a second entry point. It reuses Kokoro, the SRT writer, and ffmpeg. Each scene contributes one picture: a diagram still, a Manim clip, an equation slide, a figure, or a plot. `video.mux.fit_segment` holds a still for the narration and freezes the last frame of a short clip so the picture lasts as long as the audio (the failure mode where a 20 s drawing sat under 44 s of speech).
+
+```bash
+python3 -m video.explain examples/theory/vh/scene.yaml -o build/vh.mp4
+```
+
+The scene format and the rules for picking a still versus a clip are in [AGENTS.md](../AGENTS.md). `python render-video.py` is unchanged and still renders a frontend-slides deck.
 
 Rendered media (mp4, webm, wav, mp3) and model weights are gitignored. Inputs must be approved public results or toy and simulated examples. Do not commit internal videos.
 

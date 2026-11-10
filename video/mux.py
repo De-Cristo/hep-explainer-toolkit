@@ -265,6 +265,87 @@ def add_subtitles(
         picture.unlink()
 
 
+def fit_segment(
+    picture: Path,
+    wav: Path,
+    out: Path,
+    *,
+    duration: float,
+    fps: int,
+    threads: int,
+    width: int = 1280,
+    height: int = 720,
+) -> None:
+    """Make one segment whose picture lasts exactly ``duration`` seconds.
+
+    A still image is held for the whole narration. A clip that is shorter
+    than the narration keeps its last frame (the 20 s drawing / 44 s audio
+    failure). A clip that is longer is trimmed to the narration.
+    """
+    if duration <= 0:
+        raise ValueError("duration must be positive")
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    picture = Path(picture)
+    scale = (
+        f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,"
+        f"fps={fps},format=yuv420p"
+    )
+    suffix = picture.suffix.lower()
+    if suffix in {".png", ".jpg", ".jpeg", ".webp"}:
+        video_in = [
+            "-loop", "1", "-framerate", str(fps), "-t", f"{duration:.6f}", "-i", str(picture),
+        ]
+        video_filter = f"[0:v]{scale},trim=duration={duration:.6f},setpts=PTS-STARTPTS[v]"
+    else:
+        probed, _audio = stream_clock(probe(picture))
+        pad = max(0.0, duration - probed)
+        hold = f",tpad=stop_mode=clone:stop_duration={pad:.6f}" if pad > 0.01 else ""
+        video_in = ["-i", str(picture)]
+        video_filter = (
+            f"[0:v]{scale}{hold},trim=duration={duration:.6f},setpts=PTS-STARTPTS[v]"
+        )
+    audio_filter = (
+        f"[1:a]aresample=48000,apad=whole_dur={duration:.6f},"
+        f"atrim=0:{duration:.6f},asetpts=PTS-STARTPTS[a]"
+    )
+    _run([
+        _ffmpeg(), "-y", "-threads", str(threads),
+        *video_in,
+        "-i", str(wav),
+        "-filter_complex", f"{video_filter};{audio_filter}",
+        "-map", "[v]", "-map", "[a]",
+        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+        "-r", str(fps),
+        "-c:a", "aac", "-b:a", "160k", "-ac", "1",
+        "-t", f"{duration:.6f}",
+        "-threads", str(threads),
+        "-movflags", "+faststart",
+        str(out),
+    ])
+
+
+def concat_segments(segments: list[Path], out: Path, *, threads: int) -> None:
+    """Concatenate segments that already share a codec and a frame size."""
+    if not segments:
+        raise ValueError("no segments")
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    listing = out.with_suffix(".concat.txt")
+    listing.write_text(
+        "".join(f"file '{Path(path).resolve().as_posix()}'\n" for path in segments),
+        encoding="utf-8",
+    )
+    _run([
+        _ffmpeg(), "-y", "-threads", str(threads),
+        "-f", "concat", "-safe", "0", "-i", str(listing),
+        "-c", "copy", "-movflags", "+faststart",
+        str(out),
+    ])
+    listing.unlink(missing_ok=True)
+
+
 def probe(path: Path) -> dict:
     ffprobe = shutil.which("ffprobe")
     if not ffprobe:

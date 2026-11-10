@@ -29,11 +29,13 @@ LaTeX is recommended for animations. Manim `MathTex` and `Tex` fail without it, 
 
 These Debian/Ubuntu package names were checked against the archive. `texlive-latex-base` pulls in `texlive-binaries`, which provides the `latex` command. `texlive-latex-extra` depends on `texlive-latex-recommended`, which includes amsmath. `dvisvgm` is the converter Manim uses for math scenes. `cm-super` supplies Type 1 Computer Modern fonts so the glyphs are not bitmaps.
 
+Feynman diagrams and equation slides also need TikZ-Feynman, `physics`, and `siunitx`. Those styles are in `texlive-pictures` (`tikz-feynman`) and `texlive-science` (`physics`, `siunitx`). `texlive-luatex` provides `lualatex`, which TikZ-Feynman can use for automatic layout. The diagrams in this repo place vertices by hand, so `pdflatex` is enough to compile them. `poppler-utils` provides `pdftocairo`, which writes the PNG and SVG.
+
 ```bash
-sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended dvisvgm cm-super
+sudo apt-get install -y texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-pictures texlive-science texlive-luatex dvisvgm cm-super poppler-utils
 ```
 
-`env/setup.sh` warns when `latex` or `dvisvgm` is missing and does not fail the run.
+`env/setup.sh` warns when `latex` or `dvisvgm` is missing and does not fail the run. It prints the apt line above. No paid service is involved.
 
 ### Versions confirmed on Debian 13
 

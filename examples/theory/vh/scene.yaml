@@ -1,0 +1,46 @@
+title: "VH associated production"
+scenes:
+  - id: wh
+    narration: "A quark and an antiquark of different flavour annihilate into an off-shell W. That boson produces an on-shell W and a Higgs, which decays to a bottom quark and a bottom antiquark."
+    visual:
+      kind: manim
+      motion: build
+      diagram: wh.yaml
+    claims:
+      - id: words
+        kind: claim
+        text: "A quark and an antiquark of different flavour annihilate into an off-shell W. That boson produces an on-shell W and a Higgs, which decays to a bottom quark and a bottom antiquark."
+        citation:
+          arxiv: "hep-ph/0503172"
+          doi: "10.1016/j.physrep.2007.10.004"
+          locator: "Sections 1 and 3"
+        excerpt: excerpts/vh-wh.yaml
+      - id: graph
+        kind: diagram
+        citation:
+          arxiv: "hep-ph/0503172"
+          doi: "10.1016/j.physrep.2007.10.004"
+          locator: "Sections 1 and 3"
+        excerpt: excerpts/vh-wh.yaml
+  - id: zh
+    narration: "For a Z the incoming quark and antiquark have the same flavour. The off-shell Z produces an on-shell Z and a Higgs, and the Higgs again decays to a bottom quark and a bottom antiquark."
+    visual:
+      kind: diagram
+      motion: still
+      diagram: zh.yaml
+    claims:
+      - id: words
+        kind: claim
+        text: "For a Z the incoming quark and antiquark have the same flavour. The off-shell Z produces an on-shell Z and a Higgs, and the Higgs again decays to a bottom quark and a bottom antiquark."
+        citation:
+          arxiv: "hep-ph/0503172"
+          doi: "10.1016/j.physrep.2007.10.004"
+          locator: "Sections 1 and 3"
+        excerpt: excerpts/vh-zh.yaml
+      - id: graph
+        kind: diagram
+        citation:
+          arxiv: "hep-ph/0503172"
+          doi: "10.1016/j.physrep.2007.10.004"
+          locator: "Sections 1 and 3"
+        excerpt: excerpts/vh-zh.yaml

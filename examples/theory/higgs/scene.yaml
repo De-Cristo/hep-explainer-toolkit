@@ -1,0 +1,68 @@
+title: "Higgs mechanism"
+scenes:
+  - id: potential
+    narration: "Gauge invariance and renormalizability fix the Higgs potential. When the mass parameter is negative the vacuum sits away from the origin."
+    visual:
+      kind: slide
+      equations:
+        - id: potential
+          tex: 'V(\phi)=+\mu^{2}\phi^{\dagger}\phi+\lambda(\phi^{\dagger}\phi)^{2}'
+    claims:
+      - id: words
+        kind: claim
+        text: "Gauge invariance and renormalizability fix the Higgs potential. When the mass parameter is negative the vacuum sits away from the origin."
+        citation:
+          arxiv: "0901.0241"
+          locator: "eq15"
+        excerpt: excerpts/potential.yaml
+      - id: potential
+        kind: equation
+        tex: 'V(\phi)=+\mu^{2}\phi^{\dagger}\phi+\lambda(\phi^{\dagger}\phi)^{2}'
+        citation:
+          arxiv: "0901.0241"
+          locator: "eq15"
+        excerpt: excerpts/potential.yaml
+  - id: vev
+    narration: "The vacuum value is fixed by the Fermi constant measured in muon decay. It is about 246 gigaelectronvolts."
+    visual:
+      kind: slide
+      equations:
+        - id: vev
+          tex: '(\sqrt{2}G_F)^{-1/2}\simeq 246\,\text{GeV}'
+    claims:
+      - id: words
+        kind: claim
+        text: "The vacuum value is fixed by the Fermi constant measured in muon decay. It is about 246 gigaelectronvolts."
+        citation:
+          arxiv: "0901.0241"
+          locator: "3-45a"
+        excerpt: excerpts/vev.yaml
+      - id: vev
+        kind: equation
+        tex: '(\sqrt{2}G_F)^{-1/2}\simeq 246\,\text{GeV}'
+        citation:
+          arxiv: "0901.0241"
+          locator: "3-45a"
+        excerpt: excerpts/vev.yaml
+  - id: mass
+    narration: "Expanding around that vacuum, the Higgs mass is the square root of minus two mu squared, which is the square root of two lambda times the vacuum value."
+    visual:
+      kind: slide
+      equations:
+        - id: mass
+          tex: 'M_H=\sqrt{-2\mu^{2}}=\sqrt{2\lambda}\,\nu'
+    claims:
+      - id: words
+        kind: claim
+        text: "Expanding around that vacuum, the Higgs mass is the square root of minus two mu squared, which is the square root of two lambda times the vacuum value."
+        citation:
+          arxiv: "0901.0241"
+          locator: "eqch38"
+        excerpt: excerpts/mass.yaml
+      - id: mass
+        kind: equation
+        tex: 'M_H=\sqrt{-2\mu^{2}}=\sqrt{2\lambda}\,\nu'
+        citation:
+          arxiv: "0901.0241"
+          locator: "eqch38"
+        excerpt: excerpts/mass.yaml
