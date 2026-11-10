@@ -54,6 +54,45 @@ Use a plot (`visual.kind: plot`, or `plots/`) only when the request is about a m
 
 `video.explain` holds each still for the length of its narration and, if a Manim clip is shorter than the narration, freezes the last frame until the audio ends. Do not ship a clip whose picture and sound differ by more than 0.2 s.
 
+## 1.4. Stage candidate science before the claim registry
+
+An agent may propose scientific content, but proposed content is not canonical science. For a new source, create an authoring pack:
+
+```bash
+python3 -m checks.authoring index PATH/source.tex --out build/source-index.json
+
+python3 -m checks.authoring init PATH/source.tex \
+  --out PATH/candidates.yaml \
+  --visibility private \
+  --brief PATH/brief.yaml
+```
+
+For a public paper, use `--visibility public` and provide `--arxiv` and/or `--doi`.
+
+The candidate pack is bound to the exact source sha256. Every candidate must contain a numbered locator and a quote that occurs in the source. The agent may edit candidate wording, assumptions, caveats, dependency suggestions, and proposed IDs, but it must not edit the stored source hash to hide a source change.
+
+Promote one candidate only after a person deliberately chooses it:
+
+```bash
+python3 -m checks.authoring promote PATH/candidates.yaml CANDIDATE_ID \
+  --registry PATH/claims.yaml \
+  --excerpt-dir excerpts
+```
+
+Promotion creates the evidence excerpt and the canonical claim entry. It never grants scientific interpretation approval: `review.interpretation` is always reset to `pending`. Dependencies must already exist in the registry, so claims are promoted in an explicit order.
+
+After the storyboard and scientific interpretation have been reviewed, create the downstream authoring handoff:
+
+```bash
+python3 -m checks.authoring handoff PATH/scene.yaml \
+  --reviews PATH/reviews.json \
+  --out build/approved-authoring.json
+```
+
+This command refuses missing, stale, pending, or rejected human reviews for any claim used by the storyboard. The resulting JSON is the preferred input for an authoring agent that will build slides or video: it contains reviewed canonical statements, assumptions, caveats, audience-specific wording, comparisons, narration, and visual intent, but deliberately omits raw evidence excerpts.
+
+Do not bypass this gate by asking an authoring agent to read an unreviewed candidate pack and render final media directly.
+
 ## 1.5. Put reusable science in a claim registry
 
 When more than one explanation may reuse the same scientific content, keep the stable content in a project-local `claims.yaml` and let scenes reference it by id. The registry owns the canonical scientific statement, citation, excerpt, context, assumptions, caveats, and review state.
