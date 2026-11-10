@@ -15,6 +15,9 @@ Initial upstream survey: 2026-11-09. The repository now contains working HEP-spe
 | Theory scene -> narrated MP4 | implemented; renderer dependencies required | `python3 -m video.explain SCENE.yaml -o build/out.mp4` |
 | Static / animated Feynman diagrams | implemented | `python3 -m diagrams ...` |
 | Semantic narration-to-visual cue timing | implemented + tested for theory diagram scenes | `checks/storyboard.py`, segmented narration in `video/explain.py` |
+| Live-slide ↔ video semantic cue parity | implemented + tested | `slides/cues.py`, `data-scene` / `data-cue` |
+| Reveal-state visual QA contact sheet | implemented; Playwright runtime required | `python -m video.qa DECK` |
+| Environment capability doctor | implemented + tested | `python -m checks.doctor` |
 | Reusable audience-independent scientific claim objects | implemented + tested | `checks/claims.py`, `examples/theory/vh/claims.yaml` |
 | Definition comparison + assumption propagation | implemented + tested | `checks/claims.py` definitions, dependencies, comparisons |
 | Hash-bound human interpretation review | implemented + tested | `python -m checks.review ...` |

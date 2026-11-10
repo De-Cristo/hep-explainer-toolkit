@@ -18,6 +18,9 @@ Audience-specific scene files can also link to a validated brief and declare a r
 
 `examples/vhbb/` is the first complete audience benchmark: public, undergraduate, and HEP-specialist explanations share reviewed scientific claims but use different reasoning paths. `python -m checks.explanation SCENE.yaml` runs the renderer-equivalent validation path without producing media.
 
+
+v0.3 also adds output parity and machine readiness checks. Live decks can bind storyboard cue names to frontend-slides reveal steps with `data-scene` / `data-cue`; semantic narration resolves those names to the recorder's numeric states. `python -m video.qa DECK` builds a reveal-state contact sheet, and `python -m checks.doctor` reports which local capabilities are ready before a build starts.
+
 Development assistance and attribution are recorded in [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 > **This repository is public.** Never commit internal or unapproved CMS material. That includes plots, numbers, slides, and videos. The only figures, values, decks, and clips that may be added are approved public results, or toy and simulated examples. If a file is not clearly public, leave it out.

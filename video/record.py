@@ -102,6 +102,7 @@ def record_stills(
         "mode": "stills",
         "deck": str(deck_html),
         "plan_path": str(work / "record-plan.json"),
+        "qaPath": str(work / "render-qa.json"),
         "shots": _shot_plan(deck_html, shots, holds),
     }
     last_error: Exception | None = None
@@ -186,4 +187,4 @@ def capture(
             print(f"recordVideo aborted ({exc}); falling back to per-step screenshots")
     print("recording per-step screenshots")
     record_stills(deck_html, shots, holds, work)
-    return {"mode": "stills"}
+    return {"mode": "stills", "qa": work / "render-qa.json"}

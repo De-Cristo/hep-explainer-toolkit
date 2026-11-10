@@ -110,6 +110,19 @@ Kokoro and misaki also need spaCy's English model `en_core_web_sm` at runtime. T
 
 `.gitignore` ignores `.venv/`. The virtualenv is local state.
 
+## Check this machine before rendering
+
+The setup is intentionally capability-specific. A machine that can run scientific checks does not need the full video/Manim stack.
+
+```bash
+python -m checks.doctor
+python -m checks.doctor --require diagrams
+python -m checks.doctor --require slide-video
+python -m checks.doctor --require narrated-theory-video
+```
+
+The doctor reports missing commands/modules separately for checks, static diagrams, slide video, theory video, narrated theory video, and Manim.
+
 ## Troubleshooting
 
 ### pycairo says `Python dependency not found`

@@ -23,6 +23,7 @@ from video.mux import (
 from video.narration import Script, check_against_deck, load_script, script_document
 from video.record import RecorderAbort, capture, record_stills
 from video.srt import write_srt
+from slides.cues import load_cue_map
 from video.threads import apply_thread_limit
 
 FPS = 30
@@ -39,6 +40,8 @@ class TimedStep:
     start: float
     end: float
     phonemes: str = ""
+    scene: str | None = None
+    cue: str | None = None
 
 
 def render(
@@ -65,7 +68,7 @@ def render(
     """
     apply_thread_limit(threads)
     html_path, narration_path = resolve_deck_inputs(Path(deck), Path(narration) if narration else None)
-    script: Script = load_script(narration_path)
+    script: Script = load_script(narration_path, cue_map=load_cue_map(html_path))
     trace_documents = [
         *load_document(html_path, "slide"),
         script_document(script),
@@ -113,12 +116,22 @@ def render(
     print(f"narration: {narration_path}")
     print(f"steps: {len(script.steps)}  voice: {script.voice}  threads: {threads}")
     for cue, say in zip(script.steps, spoken):
-        line = f"  slide {cue.slide} step {cue.step}: {say}"
+        semantic = f" [{cue.scene}/{cue.cue}]" if cue.scene and cue.cue else ""
+        line = f"  slide {cue.slide} step {cue.step}{semantic}: {say}"
         print(line)
 
     if check_only:
-        return {"steps": [{"slide": c.slide, "step": c.step, "text": c.text, "spoken": s}
-                          for c, s in zip(script.steps, spoken)]}
+        return {"steps": [
+            {
+                "slide": c.slide,
+                "step": c.step,
+                "scene": c.scene,
+                "cue": c.cue,
+                "text": c.text,
+                "spoken": spoken_text,
+            }
+            for c, spoken_text in zip(script.steps, spoken)
+        ]}
 
     if out is None:
         out = html_path.parent / "build" / f"{html_path.stem}.mp4"
@@ -161,7 +174,17 @@ def render(
         end = frame_cursor / FPS
         phonemes = speaker.last_phonemes if speaker is not None else ""
         timed.append(TimedStep(
-            cue.slide, cue.step, cue.text, say, audio_seconds, frames, start, end, phonemes,
+            cue.slide,
+            cue.step,
+            cue.text,
+            say,
+            audio_seconds,
+            frames,
+            start,
+            end,
+            phonemes,
+            cue.scene,
+            cue.cue,
         ))
         shots.append((cue.slide, cue.step, png))
         assembly.append((png, wav, frames))
