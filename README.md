@@ -23,6 +23,8 @@ plots → slides → animations → narration/subtitles → video → export
 
 The first milestone is one section of about two minutes, rebuilt as a narrated MP4 on CPU only. That exercises plots, slides, narration, and video together.
 
+v0.1 of the slides → narrated MP4 path is `python render-video.py` (a deck folder plus a per-step narration file). It uses Kokoro on CPU and does not use Manim. See [video/README.md](video/README.md).
+
 What already links, and what still has to be adapted for HEP (asset library, Kokoro service, pronunciation lexicon, CMS checks, claim checker, TDR papers, publication metadata, evaluation), is written up in [INVENTORY.md](INVENTORY.md).
 
 ## Layout

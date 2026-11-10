@@ -1,0 +1,39 @@
+# Toy narration for video/examples/toy-peak. One block per reveal state.
+# Slide numbers match <!-- [Slide N] -->. Step 0 is the slide as it arrives,
+# before any class="st" fragment. The text below is what captions show;
+# video/lexicon/hep.yaml rewrites it for the voice.
+title: A toy mass peak
+voice: af_sarah
+lang: en-us
+speed: 1.0
+pad_seconds: 0.35
+steps:
+  - slide: 1
+    step: 0
+    text: >
+      This toy talk is simulated. It is not a CMS result.
+
+  - slide: 2
+    step: 0
+    text: >
+      An empty canvas. The curve has not appeared yet.
+
+  - slide: 2
+    step: 1
+    text: >
+      A toy Gaussian appears, centred near 125 GeV.
+
+  - slide: 2
+    step: 2
+    text: >
+      The made-up fit quotes a chi-squared near one.
+
+  - slide: 3
+    step: 0
+    text: >
+      These symbols are made up, and they are easy to mispronounce.
+
+  - slide: 3
+    step: 1
+    text: >
+      J/psi, ttbar, 13.6 TeV, 10 fb^-1, H->bb, ZH, WH, p_T, eta, phi, sigma, and chi-squared.

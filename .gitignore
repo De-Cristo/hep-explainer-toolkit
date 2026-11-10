@@ -6,11 +6,15 @@
 # Manim writes frames, partial movies, and TeX caches here.
 media/
 
-# Model weights
+# Model weights. Kokoro downloads these at runtime; do not commit them.
 *.onnx
 *.pt
 *.safetensors
 *.pth
+voices-*.bin
+
+# Local renders from video/ (frames, wavs, timings). Sources stay tracked.
+video/**/build/
 
 # Node
 node_modules/
@@ -23,8 +27,11 @@ __pycache__/
 .ruff_cache/
 .ipynb_checkpoints/
 
-# Virtual environments
+# Virtual environments. env/requirements.in is the Python 3.12 pin, not a venv.
 .venv/
 venv/
-env/
 ENV/
+env/*
+!env/requirements.in
+!env/requirements.txt
+!env/setup.sh
