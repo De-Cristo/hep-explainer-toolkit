@@ -17,7 +17,7 @@ from checks.claims import ClaimRegistryError, registry_dependencies
 from checks.diagrams import SceneError, load_diagram, resolve_drawing
 from checks.documents import document_from_lines
 from checks.finaltext import FinalTextError, assert_captions, seal_render_job
-from checks.renderjob import RenderInput, make_render_job
+from checks.renderjob import RenderInput, find_project_root, make_render_job
 from checks.storyboard import (
     StoryboardError,
     check_storyboard,
@@ -68,7 +68,7 @@ def render_explanation(
         for segment in segments_for_scene
     ]
     job = make_render_job(
-        scene.parent,
+        find_project_root(scene.parent),
         _render_inputs(scene, document),
         trace_documents=[
             document_from_lines(scene.resolve(), "narration", narration_texts)
