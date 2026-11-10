@@ -45,9 +45,18 @@ def _run_node(plan: dict, timeout: float) -> subprocess.CompletedProcess[str]:
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired as exc:
-        os.killpg(proc.pid, signal.SIGKILL)
-        proc.communicate()
-        raise RecorderAbort(f"recorder timed out after {timeout:.0f}s") from exc
+        # SIGTERM first so the recorder can context.close(). Playwright writes
+        # a 0-byte webm until that close; SIGKILL skips it.
+        os.killpg(proc.pid, signal.SIGTERM)
+        try:
+            stdout, stderr = proc.communicate(timeout=8)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            stdout, stderr = proc.communicate()
+        raise RecorderAbort(
+            f"recorder timed out after {timeout:.0f}s; "
+            "fell back after asking it to close the browser context"
+        ) from exc
     completed = subprocess.CompletedProcess(proc.args, proc.returncode or 0, stdout, stderr)
     if completed.stdout:
         print(completed.stdout, end="" if completed.stdout.endswith("\n") else "\n")
@@ -131,8 +140,15 @@ def record_video(
             lead_ms = int(line.split()[1])
         elif line.startswith("VIDEO "):
             video = Path(line.split(" ", 1)[1].strip())
-    if lead_ms is None or video is None or not video.is_file():
-        raise RecorderAbort("recordVideo finished without a video file")
+    empties = [path for path in video_dir.glob("*.webm") if path.stat().st_size < 1000]
+    if lead_ms is None or video is None or not video.is_file() or video.stat().st_size < 1000:
+        empty_note = ""
+        if empties:
+            empty_note = " Empty webm files: " + ", ".join(str(path) for path in empties) + "."
+        raise RecorderAbort(
+            "recordVideo did not finalize a video. Playwright only writes the "
+            f"webm when the browser context is closed.{empty_note}"
+        )
     return video, lead_ms / 1000
 
 
