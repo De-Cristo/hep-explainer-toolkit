@@ -54,6 +54,63 @@ Use a plot (`visual.kind: plot`, or `plots/`) only when the request is about a m
 
 `video.explain` holds each still for the length of its narration and, if a Manim clip is shorter than the narration, freezes the last frame until the audio ends. Do not ship a clip whose picture and sound differ by more than 0.2 s.
 
+## 1.5. Put reusable science in a claim registry
+
+When more than one explanation may reuse the same scientific content, keep the stable content in a project-local `claims.yaml` and let scenes reference it by id. The registry owns the canonical scientific statement, citation, excerpt, context, assumptions, caveats, and review state.
+
+Validate it with:
+
+```bash
+python3 -m checks.claims check PATH/claims.yaml --report build/claim-review.md
+```
+
+Use `--strict` only for a release gate. Structural validation can pass while `interpretation: pending`; strict mode does not. This distinction is deliberate: declaring a source, storing evidence, matching a value, and reviewing an interpretation are different states.
+
+A registry entry can look like:
+
+```yaml
+claims:
+  - id: vh.wh.production
+    kind: claim
+    origin: theory
+    statement: "Canonical scientific statement."
+    citation:
+      arxiv: "hep-ph/0503172"
+      doi: "10.1016/j.physrep.2007.10.004"
+      locator: "Sections 1 and 3"
+    excerpt: excerpts/vh-wh.yaml
+    context:
+      model: SM
+      process: WH
+    assumptions:
+      - "Tree-level explanatory topology."
+    caveats:
+      - "Generic q labels suppress flavour-mixing details."
+    review:
+      source: declared
+      evidence: retrieved
+      value: not_applicable
+      interpretation: pending
+```
+
+A scene then keeps only its audience-specific wording and the stable reference:
+
+```yaml
+claim_registry: claims.yaml
+scenes:
+  - id: wh
+    narration: "Audience-specific wording."
+    visual:
+      kind: diagram
+      diagram: wh.yaml
+    claims:
+      - id: words
+        claim_ref: vh.wh.production
+        text: "Audience-specific wording."
+```
+
+Do not duplicate `citation:` or `excerpt:` next to a `claim_ref`; the registry is the source of truth. The checker shows the canonical statement beside the audience wording and evidence, but it does not claim to prove semantic equivalence. A human must review simplifications and interpretation.
+
 ## 2. Scene file
 
 One YAML file. The checks parser does not accept anchors or `|` / `>` block scalars. Quote strings that contain a colon, and put TeX in single quotes so backslashes stay literal.
