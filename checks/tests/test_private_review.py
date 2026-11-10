@@ -242,11 +242,13 @@ class MethodValidationAndPacketTest(unittest.TestCase):
     def test_method_validation_requires_limit_claims(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             _registry, scene = _public_review_fixture(Path(tmp))
-            text = scene.read_text(encoding="utf-8").replace(
-                "                  does_not_establish:\n"
-                "                    - demo.limit\n",
+            original = scene.read_text(encoding="utf-8")
+            text = original.replace(
+                "      does_not_establish:\n"
+                "        - demo.limit\n",
                 "",
             )
+            self.assertNotEqual(original, text)
             scene.write_text(text, encoding="utf-8")
             report = check_storyboard(scene)
         self.assertFalse(report.ok)
@@ -268,6 +270,7 @@ class MethodValidationAndPacketTest(unittest.TestCase):
                 folder / "before.html",
                 reviews_path=reviews_path,
             )
+            self.assertFalse(first["review_ready"])
             self.assertFalse(first["release_ready"])
 
             for claim_id in registry.claims:
@@ -278,10 +281,32 @@ class MethodValidationAndPacketTest(unittest.TestCase):
                 folder / "after.html",
                 reviews_path=reviews_path,
             )
-            self.assertTrue(second["release_ready"])
+            self.assertTrue(second["review_ready"])
+            self.assertFalse(second["release_ready"])
             packet = (folder / "after.html").read_text(encoding="utf-8")
             self.assertIn("Does not establish", packet)
             self.assertIn("Effective assumptions", packet)
+
+    def test_public_packet_requires_and_passes_public_renderer_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            registry_path, scene = _public_review_fixture(folder)
+            _write(folder / "sources.yaml", "sources: []\n")
+            registry = load_registry(registry_path)
+            reviews = make_review_file(registry)
+            for claim_id in registry.claims:
+                approve(registry, reviews, claim_id, "Physics Reviewer", "approved")
+            reviews_path = folder / "reviews.json"
+            reviews_path.write_text(json.dumps(reviews), encoding="utf-8")
+            summary = build_packet(
+                scene,
+                folder / "public.html",
+                reviews_path=reviews_path,
+                public=True,
+            )
+        self.assertTrue(summary["review_ready"])
+        self.assertTrue(summary["release_ready"])
+        self.assertIsNone(summary["public_validation_error"])
 
     def test_public_packet_refuses_private_registry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
