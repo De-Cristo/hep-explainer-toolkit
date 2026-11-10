@@ -14,6 +14,15 @@ from diagrams.tikz import tikz_source
 
 def render_figure(diagram: Path, png: Path, svg: Path | None = None) -> None:
     drawing = resolve_drawing(load_diagram(diagram))
+    render_drawing_figure(drawing, png, svg)
+
+
+def render_drawing_figure(
+    drawing: dict,
+    png: Path,
+    svg: Path | None = None,
+) -> None:
+    """Render an already-resolved drawing, including semantic cue subsets."""
     source = tikz_source(drawing)
     png = Path(png).resolve()
     png.parent.mkdir(parents=True, exist_ok=True)
